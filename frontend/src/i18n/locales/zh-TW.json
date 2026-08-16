@@ -90,7 +90,7 @@
   },
   "dashboard": {
     "tagline": "One API On Cloudflare",
-    "heroTitle": "基於 Cloudflare Workers & Pages",
+    "heroTitle": "基於 Cloudflare",
     "heroDescription": "基於 Cloudflare Workers & Pages\n分散式、低延遲、高效能的 AI 統一閘道",
     "featureMultiChannel": "多渠道支援",
     "featureMultiChannelDesc": "支援 OpenAI、Claude、Gemini、Azure OpenAI 等多種 AI 服務商。",
