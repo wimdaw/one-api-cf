@@ -1,10 +1,7 @@
 name: Deploy to Cloudflare Workers
 
 on:
-  workflow_dispatch: # 允许手动触发
-  push:
-    branches:
-      - main
+  workflow_dispatch: # 仅手动触发;push 时默认只部署 Pages
 
 permissions:
   contents: read
