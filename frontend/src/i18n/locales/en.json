@@ -97,7 +97,7 @@
     "featureLoadBalance": "Load Balancing",
     "featureLoadBalanceDesc": "Weighted multi-channel routing, single-channel multi-key retry/rotation, and cross-channel fallback.",
     "featureUsageTracking": "Usage Tracking",
-    "featureUsageTrackingDesc": "Real-time Analytics Engine statistics with log retrospection for cost analysis.",
+    "featureUsageTrackingDesc": "Real-time usage statistics with log retrospection for cost analysis.",
     "featureSecurity": "Security",
     "featureSecurityDesc": "Token-based access control with independent API key allocation.",
     "quickStart": "Quick Start",

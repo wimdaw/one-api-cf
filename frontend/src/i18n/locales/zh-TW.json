@@ -97,7 +97,7 @@
     "featureLoadBalance": "負載均衡",
     "featureLoadBalanceDesc": "支援按權重多渠道路由、單渠道多金鑰重試/輪換，以及跨渠道 fallback。",
     "featureUsageTracking": "用量追蹤",
-    "featureUsageTrackingDesc": "Analytics Engine 即時統計，支援日誌回溯便於成本分析。",
+    "featureUsageTrackingDesc": "即時用量統計，支援日誌回溯便於成本分析。",
     "featureSecurity": "安全管理",
     "featureSecurityDesc": "基於安全令牌的存取控制與獨立 API 金鑰分配。",
     "quickStart": "快速開始",
