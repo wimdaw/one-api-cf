@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "one-api-cf",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-04-28",
+  "workers_dev": true,
+  "vars": {
+    "USAGE_ANALYTICS_DATASET": "usage_events_by_token"
+    // 可选：管理端 API 允许的跨域来源（逗号分隔），未设置时仅允许同源访问
+    // "ADMIN_CORS_ORIGINS": "https://admin.example.com"
+  },
+  "secrets": {
+    "required": [
+      "ADMIN_TOKEN",
+      "CF_API_TOKEN",
+      "CF_ACCOUNT_ID"
+    ]
+  },
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "one-api-cf",
+      "database_id": "5d429962-32e6-4895-8d40-467237292800"
+    }
+  ],
+  "analytics_engine_datasets": [
+    {
+      "binding": "USAGE_ANALYTICS",
+      "dataset": "usage_events_by_token"
+    }
+  ]
+}

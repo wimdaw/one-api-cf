@@ -1,0 +1,41 @@
+{
+  "name": "one-api-cf",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail -n web,worker -c cyan,green \"bun run dev:web\" \"bun run dev:worker\"",
+    "dev:web": "bun run --filter frontend dev",
+    "dev:worker": "wrangler dev --config wrangler.local.jsonc --local --host localhost",
+    "build": "bun run --filter frontend build",
+    "build:node": "bun run --filter frontend build && bun build src/node-entry.ts --outfile=dist/node-entry.js --target=node --format=esm",
+    "deploy": "bun run build && wrangler deploy --config wrangler.jsonc",
+    "cf-typegen": "wrangler types --config wrangler.jsonc --include-env=false"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tokinx/one-api-workers.git"
+  },
+  "homepage": "https://github.com/Tokinx/one-api-workers",
+  "bugs": {
+    "url": "https://github.com/Tokinx/one-api-workers/issues"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.1",
+    "chanfana": "^3.3.0",
+    "hono": "^4.12.12",
+    "mysql2": "^3.23.3",
+    "pg": "^8.23.0",
+    "sql.js": "^1.14.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/pg": "^8.21.0",
+    "@types/sql.js": "^1.4.11",
+    "concurrently": "^9.2.1",
+    "typescript": "^6.0.2",
+    "wrangler": "^4.81.0"
+  },
+  "packageManager": "bun@1.3.11"
+}

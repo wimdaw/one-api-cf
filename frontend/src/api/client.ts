@@ -1,0 +1,413 @@
+import {
+  ApiResponse,
+  AudioTestResponse,
+  TestResponse,
+  AnalyticsOverviewData,
+  AnalyticsTrendData,
+  AnalyticsBreakdownData,
+  AnalyticsEventsData,
+  AnalyticsBreakdownDimension,
+  AnalyticsRange,
+  BillingConfig,
+  SystemConfig,
+  AdminLoginResponse,
+  UsageLogFilters,
+  UsageLogSearchData,
+} from '@/types'
+import { clearAdminCredentials } from '@/lib/admin-auth'
+import i18n, { getCurrentLanguage } from '@/i18n'
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+
+// 错误类型
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+// 全局错误处理回调
+let onUnauthorized: (() => void) | null = null
+let onError: ((error: ApiError) => void) | null = null
+
+type RequestBehavior = {
+  skipUnauthorizedHandler?: boolean
+}
+
+type TestApiOptions = {
+  channelKey?: string
+}
+
+type TestApiStreamOptions = TestApiOptions & {
+  signal?: AbortSignal
+  onChunk: (chunk: string) => void
+}
+
+type TestApiStreamResult = {
+  status: number
+}
+
+const isAdminEndpoint = (endpoint: string): boolean => endpoint.startsWith('/api/admin/')
+
+export function setErrorHandlers(handlers: {
+  onUnauthorized?: () => void
+  onError?: (error: ApiError) => void
+}) {
+  onUnauthorized = handlers.onUnauthorized || null
+  onError = handlers.onError || null
+}
+
+// 请求拦截器
+async function requestInterceptor(config: RequestInit): Promise<RequestInit> {
+  const headers = new Headers(config.headers)
+
+  // 设置默认 Content-Type
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  // 附加语言偏好
+  headers.set('x-lang', getCurrentLanguage())
+
+  return { ...config, headers }
+}
+
+// 响应拦截器
+async function responseInterceptor(response: Response, behavior: RequestBehavior = {}): Promise<any> {
+  if (!response.ok) {
+    let errorMessage: string
+
+    // 先读取为文本，避免 body stream already read 错误
+    const responseText = await response.text()
+
+    try {
+      // 尝试解析为 JSON
+      const errorData = JSON.parse(responseText)
+      if (typeof errorData?.message === 'string') {
+        errorMessage = errorData.message
+      } else if (typeof errorData?.error === 'string') {
+        errorMessage = errorData.error
+      } else {
+        errorMessage = JSON.stringify(errorData)
+      }
+    } catch {
+      // 不是 JSON，直接使用文本
+      errorMessage = responseText || `Request failed: ${response.status}`
+    }
+
+    const error = new ApiError(errorMessage, response.status)
+
+    // 处理特定状态码
+    switch (response.status) {
+      case 401:
+        if (!behavior.skipUnauthorizedHandler) {
+          clearAdminCredentials()
+          onUnauthorized?.()
+          error.message = i18n.t('apiClient.authExpired')
+        }
+        break
+      case 403:
+        error.message = i18n.t('apiClient.forbidden')
+        break
+      case 404:
+        error.message = i18n.t('apiClient.notFound')
+        break
+      case 500:
+        error.message = i18n.t('apiClient.serverError')
+        break
+      case 502:
+      case 503:
+      case 504:
+        error.message = i18n.t('apiClient.serviceUnavailable')
+        break
+    }
+
+    // 触发全局错误回调
+    onError?.(error)
+
+    throw error
+  }
+
+  const contentType = response.headers.get('content-type')
+  if (contentType && contentType.includes('application/json')) {
+    return response.json()
+  }
+
+  if (contentType && contentType.startsWith('audio/')) {
+    const blob = await response.blob()
+    return {
+      object: 'audio',
+      contentType,
+      size: blob.size,
+    }
+  }
+
+  return response.text()
+}
+
+function buildAudioFilename(endpoint: string, contentType: string): string {
+  const extension = contentType.split('/')[1]?.split(';')[0] || 'bin'
+  const suffix = endpoint.split('/').filter(Boolean).join('-') || 'response'
+  return `${suffix}.${extension}`
+}
+
+function buildQueryString(params: Record<string, string | number | undefined>): string {
+  const searchParams = new URLSearchParams()
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') {
+      searchParams.set(key, String(value))
+    }
+  })
+
+  const query = searchParams.toString()
+  return query ? `?${query}` : ''
+}
+
+// 统一请求方法
+async function request<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  behavior: RequestBehavior = {},
+): Promise<T> {
+  const url = `${BASE_URL}${endpoint}`
+
+  try {
+    const config = await requestInterceptor(options)
+    const requestConfig = isAdminEndpoint(endpoint)
+      ? { ...config, credentials: 'include' as const }
+      : config
+    const response = await fetch(url, requestConfig)
+    return responseInterceptor(response, behavior)
+  } catch (error) {
+    // 处理网络错误
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      const networkError = new ApiError(i18n.t('apiClient.networkError'), 0)
+      onError?.(networkError)
+      throw networkError
+    }
+    throw error
+  }
+}
+
+// API 方法
+export const apiClient = {
+  // 通用方法
+  get: <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' }),
+
+  post: <T>(endpoint: string, data?: unknown) => request<T>(endpoint, {
+    method: 'POST',
+    body: data ? JSON.stringify(data) : undefined,
+  }),
+
+  delete: <T>(endpoint: string) => request<T>(endpoint, { method: 'DELETE' }),
+
+  // Channel APIs
+  getChannels: () => request<ApiResponse>('/api/admin/channel', { method: 'GET' }),
+
+  saveChannel: (key: string, config: unknown) =>
+    request(`/api/admin/channel/${encodeURIComponent(key)}`, {
+      method: 'POST',
+      body: JSON.stringify(config),
+    }),
+
+  fetchChannelModels: (config: unknown, freeOnly = false) =>
+    request<ApiResponse>('/api/admin/channel/models/fetch', {
+      method: 'POST',
+      body: JSON.stringify(freeOnly ? { ...(config as object), free_only: true } : config),
+    }),
+
+  deleteChannel: (key: string) =>
+    request(`/api/admin/channel/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+
+  // Token APIs
+  getTokens: () => request<ApiResponse>('/api/admin/token', { method: 'GET' }),
+
+  saveToken: (key: string, config: unknown) =>
+    request(`/api/admin/token/${encodeURIComponent(key)}`, {
+      method: 'POST',
+      body: JSON.stringify(config),
+    }),
+
+  deleteToken: (key: string) =>
+    request(`/api/admin/token/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+
+  resetTokenUsage: (key: string) =>
+    request(`/api/admin/token/${encodeURIComponent(key)}/reset`, { method: 'POST' }),
+
+  // Pricing APIs
+  getPricing: () => request<ApiResponse>('/api/admin/pricing', { method: 'GET' }),
+
+  savePricing: (config: unknown) =>
+    request('/api/admin/pricing', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    }),
+
+  getBillingConfig: () => request<ApiResponse<BillingConfig>>('/api/admin/billing/config', { method: 'GET' }),
+
+  saveBillingConfig: (config: BillingConfig) =>
+    request<ApiResponse<BillingConfig>>('/api/admin/billing/config', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    }),
+
+  getSystemConfig: () => request<ApiResponse<SystemConfig>>('/api/admin/system/config', { method: 'GET' }),
+
+  saveSystemConfig: (config: SystemConfig) =>
+    request<ApiResponse<SystemConfig>>('/api/admin/system/config', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    }),
+
+  sendTelegramTestMessage: (payload: Pick<SystemConfig['adminSecurity'], 'telegramBotToken' | 'telegramChatId'>) =>
+    request<ApiResponse<Pick<SystemConfig['adminSecurity'], 'verifiedFingerprint' | 'verifiedAt'>>>('/api/admin/system/telegram/test', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Analytics APIs
+  getAnalyticsOverview: (range: AnalyticsRange) =>
+    request<ApiResponse<AnalyticsOverviewData>>(`/api/admin/analytics/overview?range=${encodeURIComponent(range)}`, { method: 'GET' }),
+
+  getAnalyticsTrend: (range: AnalyticsRange) =>
+    request<ApiResponse<AnalyticsTrendData>>(`/api/admin/analytics/trend?range=${encodeURIComponent(range)}`, { method: 'GET' }),
+
+  getAnalyticsBreakdown: (range: AnalyticsRange, dimension: AnalyticsBreakdownDimension) =>
+    request<ApiResponse<AnalyticsBreakdownData>>(
+      `/api/admin/analytics/breakdown?range=${encodeURIComponent(range)}&dimension=${encodeURIComponent(dimension)}`,
+      { method: 'GET' }
+    ),
+
+  getAnalyticsEvents: (range: AnalyticsRange, limit = 40) =>
+    request<ApiResponse<AnalyticsEventsData>>(
+      `/api/admin/analytics/events?range=${encodeURIComponent(range)}&limit=${encodeURIComponent(String(limit))}`,
+      { method: 'GET' }
+    ),
+
+  getUsageLogs: (filters: UsageLogFilters) =>
+    request<ApiResponse<UsageLogSearchData>>(
+      `/api/admin/usage-logs${buildQueryString({
+        start: filters.start,
+        end: filters.end,
+        dimension: filters.dimension,
+        keyword: filters.keyword,
+        result: filters.result,
+        page: filters.page,
+      })}`,
+      { method: 'GET' }
+    ),
+
+  // API Test - 使用自定义 token，不走通用拦截器
+  testApi: async (endpoint: string, token: string, body: unknown, options: TestApiOptions = {}): Promise<TestResponse> => {
+    const url = `${BASE_URL}${endpoint}`
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    }
+    if (options.channelKey) {
+      headers['x-channel-key'] = options.channelKey
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'omit',
+      headers,
+      body: JSON.stringify(body),
+    })
+
+    if (response.ok) {
+      const contentType = response.headers.get('content-type') || ''
+      if (contentType.startsWith('audio/')) {
+        const blob = await response.blob()
+        const audioResponse: AudioTestResponse = {
+          object: 'audio',
+          contentType,
+          size: blob.size,
+          url: URL.createObjectURL(blob),
+          filename: buildAudioFilename(endpoint, contentType),
+        }
+        return audioResponse
+      }
+    }
+
+    return responseInterceptor(response)
+  },
+
+  testApiStream: async (endpoint: string, token: string, body: unknown, options: TestApiStreamOptions): Promise<TestApiStreamResult> => {
+    const url = `${BASE_URL}${endpoint}`
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    }
+    if (options.channelKey) {
+      headers['x-channel-key'] = options.channelKey
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'omit',
+      signal: options.signal,
+      headers,
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      await responseInterceptor(response)
+    }
+
+    if (!response.body) {
+      throw new ApiError('Response stream is not available', response.status)
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        options.onChunk(decoder.decode(value, { stream: true }))
+      }
+
+      const tail = decoder.decode()
+      if (tail) {
+        options.onChunk(tail)
+      }
+    } finally {
+      reader.releaseLock()
+    }
+
+    return { status: response.status }
+  },
+
+  // Auth check
+  checkAuth: () => request<ApiResponse>('/api/admin/channel', { method: 'GET' }),
+
+  startAdminLogin: (token: string) =>
+    request<ApiResponse<AdminLoginResponse>>('/api/admin/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+
+  verifyAdminLogin: (challengeId: string, code: string) =>
+    request<ApiResponse<AdminLoginResponse>>('/api/admin/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId, code }),
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+
+  logoutAdmin: () =>
+    request<ApiResponse<boolean>>('/api/admin/auth/logout', {
+      method: 'POST',
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+}

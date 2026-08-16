@@ -1,0 +1,100 @@
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+import {
+  DEFAULT_BILLING_DISPLAY_DECIMALS,
+  normalizeBillingDisplayDecimals,
+  rawBillingToUsd,
+} from "./billing"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+const TIMESTAMP_TIMEZONE_PATTERN = /(Z|[+-]\d{2}:\d{2})$/i
+
+export function parseUtcTimestamp(value: string): Date | null {
+  const rawValue = value.trim()
+  if (!rawValue) {
+    return null
+  }
+
+  const normalizedValue = rawValue.includes('T')
+    ? rawValue
+    : rawValue.replace(' ', 'T')
+  const candidate = TIMESTAMP_TIMEZONE_PATTERN.test(normalizedValue)
+    ? normalizedValue
+    : `${normalizedValue}Z`
+  const date = new Date(candidate)
+
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+export function formatCurrency(
+  value: number,
+  displayDecimals = DEFAULT_BILLING_DISPLAY_DECIMALS,
+): string {
+  const decimals = normalizeBillingDisplayDecimals(displayDecimals)
+  const normalizedValue = rawBillingToUsd(value)
+  const safeValue = Math.abs(normalizedValue) < 10 ** -decimals ? 0 : normalizedValue
+  return `$${safeValue.toFixed(decimals)}`
+}
+
+export function formatQuota(value: number, displayDecimals = DEFAULT_BILLING_DISPLAY_DECIMALS): string {
+  return formatCurrency(value, displayDecimals)
+}
+
+export function formatCompactNumber(value: number): string {
+  const absValue = Math.abs(value)
+
+  const formatWithSuffix = (divisor: number, suffix: string): string => {
+    const scaled = value / divisor
+    const formatted = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: Math.abs(scaled) >= 100 ? 0 : 1,
+    }).format(scaled)
+
+    return `${formatted}${suffix}`
+  }
+
+  if (absValue >= 1_000_000_000) {
+    return formatWithSuffix(1_000_000_000, 'B')
+  }
+
+  if (absValue >= 1_000_000) {
+    return formatWithSuffix(1_000_000, 'M')
+  }
+
+  if (absValue >= 1_000) {
+    return formatWithSuffix(1_000, 'K')
+  }
+
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+export function copyToClipboard(text: string): Promise<void> {
+  return navigator.clipboard.writeText(text)
+}
+
+export function generateTokenKey(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const randomValues = new Uint32Array(48)
+    crypto.getRandomValues(randomValues)
+
+    let token = 'sk-'
+    for (let i = 0; i < 48; i++) {
+      token += chars.charAt(randomValues[i] % chars.length)
+    }
+    return token
+  }
+
+  // 旧环境回退
+  let token = 'sk-'
+  for (let i = 0; i < 48; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return token
+}

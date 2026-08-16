@@ -1,0 +1,57 @@
+# one-api-cf Docker Compose 编排
+# 默认使用 SQLite(无需外部数据库,最简单),可切换 MySQL / PostgreSQL
+
+services:
+  one-api-cf:
+    build: .
+    container_name: one-api-cf
+    ports:
+      - "3000:3000"
+    environment:
+      # ===== 数据库选择 =====
+      # 可选: sqlite(默认) | mysql | postgres
+      DB_DRIVER: ${DB_DRIVER:-sqlite}
+      # SQLite 配置
+      DB_FILE: /app/data/one-api-cf.db
+      # MySQL / PostgreSQL 配置(DB_DRIVER 切换时用)
+      DB_HOST: ${DB_HOST:-127.0.0.1}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_NAME: ${DB_NAME:-one_api_workers}
+      # ===== 应用配置 =====
+      PORT: 3000
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-admin}
+    volumes:
+      - oaw_data:/app/data
+    restart: unless-stopped
+
+# ===== 可选: MySQL 数据库 (DB_DRIVER=mysql 时启用) =====
+  mysql:
+    image: mysql:8
+    container_name: oaw-mysql
+    profiles: ["mysql"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpass}
+      MYSQL_DATABASE: one_api_workers
+    volumes:
+      - oaw_mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: unless-stopped
+
+  # ===== 可选: PostgreSQL 数据库 (DB_DRIVER=postgres 时启用) =====
+  postgres:
+    image: postgres:16
+    container_name: oaw-postgres
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pgpass}
+      POSTGRES_DB: one_api_workers
+    volumes:
+      - oaw_pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  oaw_data:
+  oaw_mysql_data:
+  oaw_pg_data:
