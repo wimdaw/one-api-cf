@@ -89,9 +89,9 @@
     "adminLogin": "Admin Login"
   },
   "dashboard": {
-    "tagline": "Unified AI Gateway",
-    "heroTitle": "One API on Workers",
-    "heroDescription": "Built on Cloudflare Workers\nDistributed, low-latency, high-performance AI unified gateway",
+    "tagline": "One API On Cloudflare",
+    "heroTitle": "Built on Cloudflare Workers & Pages",
+    "heroDescription": "Built on Cloudflare Workers & Pages\nDistributed, low-latency, high-performance AI unified gateway",
     "featureMultiChannel": "Multi-Channel",
     "featureMultiChannelDesc": "Supports OpenAI, Claude, Gemini, Azure OpenAI and more AI providers.",
     "featureLoadBalance": "Load Balancing",
