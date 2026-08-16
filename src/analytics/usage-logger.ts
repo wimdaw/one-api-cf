@@ -79,13 +79,14 @@ const getAnalyticsBinding = (c: Context<HonoCustomType>): AnalyticsEngineDataset
     return c.env.USAGE_ANALYTICS;
 };
 
-// 本地数据库模式: 无 CF Analytics 绑定, 但存在 DB (Docker/自托管)
+// 统一数据库分析模式: 只要存在 DB (D1 或本地 SQLite/MySQL/PG), 用量记录就写入 usage_record 表。
+// 不再依赖 Cloudflare Analytics Engine (CF Worker/Pages 部署同样使用 D1 作为分析数据源)。
 export const isLocalDbAnalyticsMode = (c: Context<HonoCustomType>): boolean => {
-    if (getAnalyticsBinding(c)) {
+    if (!c.env.DB || typeof (c.env.DB as any).prepare !== "function") {
         return false;
     }
 
-    return Boolean(c.env.DB && typeof (c.env.DB as any).prepare === "function");
+    return true;
 };
 
 const writeLocalDbDataPoint = (

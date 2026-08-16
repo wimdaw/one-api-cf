@@ -8,7 +8,7 @@
 
 ## 方式一:GitHub Actions 一键自动部署(推荐)
 
-CI 会自动完成:D1 数据库创建、Analytics Engine 数据集创建、`wrangler.jsonc` 自动改写、构建、部署。全程无需手动操作 Cloudflare 面板。
+CI 会自动完成:D1 数据库创建、`wrangler.jsonc` 自动改写、构建、部署。全程无需手动操作 Cloudflare 面板。
 
 ### 1. 推送代码到你自己的 GitHub 仓库
 
@@ -23,7 +23,7 @@ git push -u origin main
 
 | Secret | 说明 |
 |---|---|
-| `CF_API_TOKEN` | Cloudflare API Token,权限需包含 **Workers 编辑、D1 数据库、Analytics Engine、账号级读写** |
+| `CF_API_TOKEN` | Cloudflare API Token,权限需包含 **Workers 编辑、D1 数据库、账号级读写**(分析数据直接存 D1,无需 Analytics Engine) |
 | `CF_ACCOUNT_ID` | 你的 Cloudflare 账户 ID(可在 Dashboard 右下角找到) |
 | `ADMIN_TOKEN` | 管理后台登录令牌(自定义,请用长随机串) |
 
@@ -47,7 +47,7 @@ git push -u origin main
 ### 1. 环境要求
 
 - [Bun 1.3+](https://bun.sh)
-- Cloudflare 账户(需 Workers + D1 + Analytics Engine 权限)
+- Cloudflare 账户(需 Workers + D1 权限;分析数据直接存 D1,无需 Analytics Engine)
 - wrangler 已安装(`bun add -g wrangler` 或本项目 devDependency 自带)
 
 ### 2. 安装依赖
@@ -64,19 +64,14 @@ bunx wrangler login
 
 # 创建 D1 数据库,记录返回的 ID
 bunx wrangler d1 create one-api-cf
-
-# 创建 Analytics Engine 数据集(手动 或 用下方脚本)
 ```
-
-Analytics Engine 数据集**无法用 wrangler 命令创建**,请在你的 Cloudflare 面板创建:
-
-> Workers & Pages → 左侧 **Analytics Engine** → 创建数据集 → 命名为 `usage_events_by_token`
 
 ### 4. 配置 wrangler.jsonc
 
 编辑该文件,填入:
 - `d1_databases[].database_id` → 你 D1 数据库的 ID
-- `analytics_engine_datasets[].dataset` → `usage_events_by_token`
+
+> 用量分析数据写入 D1 的 `usage_record` 表(首次迁移自动创建),无需额外配置数据分析产品。
 
 ### 5. 设置 Secret
 
@@ -121,14 +116,13 @@ bash scripts/build-pages.sh
 
 1. Dashboard → **Workers & Pages** → **Create** → **Pages** → 创建空项目 `one-api-cf`
 2. 在 Pages 项目 → **Settings → Bindings** 添加:
-   - **D1 Database** → `DB` → 选择你的 `one-api-cf` 数据库
-   - **Analytics Engine** → `USAGE_ANALYTICS` → 数据集 `usage_events_by_token`
+   - **D1 Database** → `DB` → 选择你的 `one-api-cf` 数据库(用量分析也存这张 D1)
 3. 在 Pages 项目 → **Settings → Environment variables** 添加:
    - `ADMIN_TOKEN`(管理后台令牌)
 
 之后手动触发 **Deploy to Cloudflare Pages** workflow 即可。
 
-> 注意:Pages 的 D1/Analytics 绑定在 **项目 Settings** 里配置(而非 wrangler 配置),`_worker.js` 会自动读取同名 binding。
+> 注意:Pages 的 D1 绑定在 **项目 Settings** 里配置(而非 wrangler 配置),`_worker.js` 会自动读取同名 binding。
 
 ---
 
@@ -195,10 +189,10 @@ docker compose --profile postgres up -d --build
 
 | 部署方式 | 用量 / 分析数据存储 |
 |---|---|
-| **Cloudflare (Workers/Pages)** | Cloudflare **Analytics Engine**(`usage_events_by_token` 数据集),后台看板直接查询 |
+| **Cloudflare (Workers/Pages)** | **D1 数据库 `usage_record` 表**（首次迁移自动建表),后台看板直接查询 |
 | **Docker (SQLite/MySQL/PostgreSQL)** | 本地数据库 **`usage_record` 表**(自动建表),后台看板从数据库读取 |
 
-两种模式下,后台的 **Dashboard(概览 / 趋势 / 分布)、Usage Logs(用量日志)、Events(最近事件)** 均可用,数据源自动适配,无需手动配置。
+所有部署方式使用**同一条 `usage_record` 数据链路**,后台的 **Dashboard(概览 / 趋势 / 分布)、Usage Logs(用量日志)、Events(最近事件)** 均可直接使用,无需额外配置数据分析产品。
 
 > 提示:SQLite 模式数据**自动持久化落盘**(每 8 秒 + 进程退出时),重启不丢渠道、Token 与用量记录。
 

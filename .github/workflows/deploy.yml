@@ -54,41 +54,14 @@ jobs:
             echo "✅ D1 已创建: $CREATED"
           fi
 
-      - name: Create/Get Analytics Engine dataset
-        id: analytics
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          DATASET_NAME="usage_events_by_token"
-          # 查询已有数据集
-          EXISTING=$(curl -s -X GET \
-            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/analytics_engine/datasets" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" | \
-            python3 -c "import sys,json;d=json.load(sys.stdin);print(next((r['dataset_name'] for r in d.get('result',[])),''))")
-          if [ -n "$EXISTING" ]; then
-            echo "✅ Analytics 数据集已存在: $EXISTING"
-          else
-            RESULT=$(curl -s -X POST \
-              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/analytics_engine/datasets" \
-              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -d "{\"dataset_name\":\"${DATASET_NAME}\"}" | \
-              python3 -c "import sys,json;d=json.load(sys.stdin);print('OK' if d.get('success') else d.get('errors'))")
-            echo "✅ Analytics 数据集创建: $RESULT"
-          fi
-          echo "dataset=$DATASET_NAME" >> $GITHUB_OUTPUT
-
       - name: Configure wrangler.jsonc with real IDs
         env:
           D1_ID: ${{ steps.d1.outputs.d1_id }}
-          ANALYTICS_DATASET: ${{ steps.analytics.outputs.dataset }}
         run: |
           python3 << 'EOF'
           import json, re, os
 
           d1_id = os.environ['D1_ID'].strip()
-          dataset = os.environ['ANALYTICS_DATASET'].strip()
 
           with open('wrangler.jsonc', 'r', encoding='utf-8') as f:
               content = f.read()
@@ -102,15 +75,13 @@ jobs:
               'database_name': 'one-api-cf',
               'database_id': d1_id,
           }]
-          cfg['analytics_engine_datasets'] = [{
-              'binding': 'USAGE_ANALYTICS',
-              'dataset': dataset,
-          }]
+          # 分析数据直接使用 D1 的 usage_record 表, 无需 Analytics Engine
+          cfg.pop('analytics_engine_datasets', None)
           cfg['compatibility_date'] = cfg.get('compatibility_date', '2025-04-28')
 
           with open('wrangler.jsonc', 'w', encoding='utf-8') as f:
               json.dump(cfg, f, indent=2)
-          print("OK wrangler.jsonc updated: D1=" + d1_id[:8] + "... dataset=" + dataset)
+          print("OK wrangler.jsonc updated: D1=" + d1_id[:8] + "...")
           EOF
 
       - name: Build

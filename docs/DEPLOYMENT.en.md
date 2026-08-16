@@ -8,7 +8,7 @@ This project supports **four deployment methods** (Workers one-click / local man
 
 ## Option 1: GitHub Actions One-Click Auto-Deploy (Recommended)
 
-CI automatically handles: creating the D1 database, creating the Analytics Engine dataset, rewriting `wrangler.jsonc`, building, and deploying. No manual Cloudflare dashboard interaction required.
+CI automatically handles: creating the D1 database, rewriting `wrangler.jsonc`, building, and deploying. No manual Cloudflare dashboard interaction required.
 
 ### 1. Push code to your own GitHub repository
 
@@ -23,7 +23,7 @@ Repo → **Settings → Secrets and variables → Actions**, add these 3 Secrets
 
 | Secret | Description |
 |---|---|
-| `CF_API_TOKEN` | Cloudflare API Token; permissions must include **Workers edit, D1 database, Analytics Engine, account-level read/write** |
+| `CF_API_TOKEN` | Cloudflare API Token; permissions must include **Workers edit, D1 database, account-level read/write** (analytics stored in D1, no Analytics Engine needed) |
 | `CF_ACCOUNT_ID` | Your Cloudflare account ID (found in the Dashboard bottom-right) |
 | `ADMIN_TOKEN` | Admin dashboard login token (custom; use a long random string) |
 
@@ -47,7 +47,7 @@ For environments where you want manual control, or local debugging.
 ### 1. Prerequisites
 
 - [Bun 1.3+](https://bun.sh)
-- Cloudflare account (Workers + D1 + Analytics Engine permission)
+- Cloudflare account (Workers + D1 permission; analytics stored in D1, no Analytics Engine needed)
 - wrangler installed (`bun add -g wrangler`, or bundled as a devDependency)
 
 ### 2. Install dependencies
@@ -64,19 +64,14 @@ bunx wrangler login
 
 # Create D1 database, note the returned ID
 bunx wrangler d1 create one-api-cf
-
-# Create Analytics Engine dataset (manually or below)
 ```
-
-The Analytics Engine dataset **cannot be created via wrangler command**; create it in the Cloudflare dashboard:
-
-> Workers & Pages → sidebar **Analytics Engine** → Create dataset → name it `usage_events_by_token`
 
 ### 4. Configure wrangler.jsonc
 
 Edit the file and fill in:
 - `d1_databases[].database_id` → your D1 database ID
-- `analytics_engine_datasets[].dataset` → `usage_events_by_token`
+
+> Usage analytics are written to the D1 `usage_record` table (auto-created on first migration); no separate analytics product needed.
 
 ### 5. Set secrets
 
@@ -121,14 +116,13 @@ The repo already contains `.github/workflows/deploy-pages.yml`. Configure:
 
 1. Dashboard → **Workers & Pages** → **Create** → **Pages** → create empty project `one-api-cf`
 2. In the Pages project → **Settings → Bindings** add:
-   - **D1 Database** → `DB` → select your `one-api-cf` database
-   - **Analytics Engine** → `USAGE_ANALYTICS` → dataset `usage_events_by_token`
+   - **D1 Database** → `DB` → select your `one-api-cf` database (usage analytics also stored in this D1)
 3. In the Pages project → **Settings → Environment variables** add:
    - `ADMIN_TOKEN` (admin dashboard token)
 
 Then manually trigger the **Deploy to Cloudflare Pages** workflow.
 
-> Note: Pages D1/Analytics bindings are configured in **project Settings** (not in the wrangler config); `_worker.js` reads bindings with matching names automatically.
+> Note: Pages D1 binding is configured in **project Settings** (not in the wrangler config); `_worker.js` reads bindings with matching names automatically.
 
 ---
 
@@ -195,7 +189,7 @@ Copy `.env.example` to `.env` and modify as needed:
 
 | Deployment | Usage / analytics storage |
 |---|---|
-| **Cloudflare (Workers/Pages)** | Cloudflare **Analytics Engine** (`usage_events_by_token` dataset); dashboard queries it directly |
+| **Cloudflare (Workers/Pages)** | **D1 `usage_record` table** (auto-created on first migration); dashboard queries it directly |
 | **Docker (SQLite/MySQL/PostgreSQL)** | Local database **`usage_record` table** (auto-created); dashboard reads from the database |
 
 In both modes, the dashboard **Dashboard (overview/trend/breakdown), Usage Logs, and Events** all work; the data source is auto-adapted — no manual configuration needed.

@@ -18,7 +18,7 @@ Credits: built on top of <a href="https://github.com/Tokinx/one-api-workers" tar
 - Unified proxy entry: supports `/v1/chat/completions`, `/v1/messages`, `/v1/responses`, `/v1/audio/speech`, `/v1/models`
 - Load-balancing routing: weight-based routing, multi-key per channel, failure retry, key rotation, and cross-channel fallback
 - Quota & billing: token-level quota control, global model pricing, channel-level model pricing
-- Observability: writes to Cloudflare Analytics Engine on Workers/Pages; writes to a local database (SQLite/MySQL/PostgreSQL) on Docker/self-hosted — full overview, trends, breakdowns, and usage log search in both modes
+- Observability: all deployments (CF Workers/Pages + Docker) write usage to a single database `usage_record` table (D1 or SQLite/MySQL/PostgreSQL) — full overview, trends, breakdowns, and usage log search
 - Admin dashboard: React + Vite management UI covering channels, tokens, pricing, API testing, system settings
 - Admin security: default admin token login, optional Telegram two-factor verification, rate-limited login chain and session cookies
 - API docs: Swagger, ReDoc, and OpenAPI JSON exposed via Chanfana, togglable in system settings
@@ -49,7 +49,7 @@ Three deployment options — pick any:
 | `CF_ACCOUNT_ID` | Cloudflare account ID |
 | `ADMIN_TOKEN` | Admin dashboard login token |
 
-CI automatically creates the D1 database and Analytics Engine dataset, then deploys the Worker. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+CI automatically creates the D1 database and deploys the Worker (usage analytics stored in D1). See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ### Option 2: Cloudflare Pages Deployment
 
@@ -73,8 +73,7 @@ See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 # Create D1 database, note its Name & ID
 bunx wrangler d1 create one-api-cf
 
-# Enable Analytics Engine and create a dataset, note the dataset Name
-# Update the above into wrangler.jsonc
+# Update the D1 info above into wrangler.jsonc
 
 # Set production secrets
 wrangler secret put ADMIN_TOKEN
@@ -103,7 +102,7 @@ Current dashboard pages include:
 one-api-cf/
 ├── src/
 │   ├── admin/                    # Admin API: auth / channel / token / pricing / analytics / system
-│   ├── analytics/                # Analytics Engine write & query
+│   ├── analytics/                # Usage write & query (stored in usage_record)
 │   ├── db/                       # D1 init & migration
 │   ├── providers/                # Upstream proxy implementations
 │   ├── storage/                  # DB adapter layer (SQLite/MySQL/PostgreSQL) for Docker
@@ -132,7 +131,7 @@ one-api-cf/
 ### Prerequisites
 
 - Bun 1.3+
-- Cloudflare account, Workers + D1 database + Analytics Engine (`usage_events_by_token`)
+- Cloudflare account, Workers + D1 database (usage analytics stored in D1)
 
 ### Install Dependencies
 
@@ -145,14 +144,13 @@ bun install
 The `wrangler.jsonc` / `wrangler.local.jsonc` in this repo already contain the required binding structure, but you need to replace them with your own environment info:
 
 - `d1_databases[].database_name` / `database_id`: replace with your own D1
-- `analytics_engine_datasets[].dataset`: defaults to `usage_events_by_token`
 - `vars.FRONTEND_DEV_SERVER_URL`: only for local dev, defaults to `http://127.0.0.1:5173`
 - `assets`: keep `public/` and the `ASSETS` binding as-is
 
 Key secrets in the current config:
 
 - `ADMIN_TOKEN`: admin login token, required
-- `CF_API_TOKEN`: for querying Analytics Engine SQL, powers dashboard analytics & usage logs
+- `CF_API_TOKEN`: for deployment and D1 database operations
 - `CF_ACCOUNT_ID`: paired with `CF_API_TOKEN`, for Cloudflare Analytics queries
 
 Example:

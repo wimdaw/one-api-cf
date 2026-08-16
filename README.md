@@ -18,7 +18,7 @@
 - 统一代理入口：支持 `/v1/chat/completions`、`/v1/messages`、`/v1/responses`、`/v1/audio/speech`、`/v1/models`
 - 负载均衡路由：支持按权重路由，单渠道多 Key，失败重试、Key 轮换和跨渠道 fallback
 - 配额与计费：支持 Token 级额度控制、全局模型定价、渠道级模型定价
-- 观测能力：Cloudflare 部署写入 Analytics Engine；Docker/自托管写入本地数据库（SQLite/MySQL/PostgreSQL），后台提供完整概览、趋势、分布和用量日志检索
+- 观测能力：所有部署方式（CF Workers/Pages + Docker）统一写入数据库 `usage_record` 表(D1 或 SQLite/MySQL/PostgreSQL)，后台提供完整概览、趋势、分布和用量日志检索
 - 管理后台：React + Vite 管理界面，覆盖渠道、令牌、定价、API 测试、系统设置
 - 管理员安全：默认管理员令牌登录，可选 Telegram 二次验证，后台登录链路带限速与 session cookie
 - API 文档：基于 Chanfana 暴露 Swagger、ReDoc、OpenAPI JSON，可在系统设置中开关
@@ -49,7 +49,7 @@
 | `CF_ACCOUNT_ID` | Cloudflare 账户 ID |
 | `ADMIN_TOKEN` | 管理后台登录令牌 |
 
-CI 会自动创建 D1 数据库 + Analytics Engine 数据集,并部署 Worker。详见 [`docs/DEPLOYMENT.md`](#方式一github-actions-一键自动部署推荐)。
+CI 会自动创建 D1 数据库并部署 Worker(用量分析直接存 D1)。详见 [`docs/DEPLOYMENT.md`](#方式一github-actions-一键自动部署推荐)。
 
 ### 方式二:Cloudflare Pages 部署
 
@@ -73,8 +73,7 @@ docker compose --profile postgres up -d
 # 创建 D1 数据库，获取数据库 Name、ID
 bunx wrangler d1 create one-api-cf
 
-# 启用 Analytics Engine 并创建一张数据集，获取数据集 Name
-# 将上述数据更新入 wrangler.jsonc
+# 将上述 D1 数据更新入 wrangler.jsonc
 
 # 设置生产 Secret
 wrangler secret put ADMIN_TOKEN
@@ -103,7 +102,7 @@ bun run deploy
 one-api-cf/
 ├── src/
 │   ├── admin/                    # 管理接口：auth / channel / token / pricing / analytics / system
-│   ├── analytics/                # Analytics Engine 写入与查询
+│   ├── analytics/                # 用量写入与查询(统一落 usage_record 表)
 │   ├── db/                       # D1 初始化与迁移
 │   ├── providers/                # 各类上游代理实现
 │   ├── billing.ts                # 计费与金额精度
@@ -128,7 +127,7 @@ one-api-cf/
 ### 环境要求
 
 - Bun 1.3+
-- Cloudflare 账户，Workers + D1 database + Analytics Engine (`usage_events_by_token`)
+- Cloudflare 账户，Workers + D1 database(用量分析存 D1)
 
 ### 安装依赖
 
@@ -141,14 +140,13 @@ bun install
 当前仓库里的 `wrangler.jsonc` / `wrangler.local.jsonc` 已经包含运行所需绑定结构，但你需要替换成自己的环境信息：
 
 - `d1_databases[].database_name` / `database_id`：替换为自己的 D1
-- `analytics_engine_datasets[].dataset`：默认使用 `usage_events_by_token`
 - `vars.FRONTEND_DEV_SERVER_URL`：仅本地联调时使用，默认 `http://127.0.0.1:5173`
 - `assets`：保持 `public/` 与 `ASSETS` 绑定即可
 
 当前配置中的关键 secrets：
 
 - `ADMIN_TOKEN`：管理员登录令牌，必需
-- `CF_API_TOKEN`：用于查询 Analytics Engine SQL，支持后台分析看板和用量日志
+- `CF_API_TOKEN`：用于部署与 D1 数据库操作
 - `CF_ACCOUNT_ID`：与 `CF_API_TOKEN` 配套，用于 Cloudflare Analytics 查询
 
 示例：
