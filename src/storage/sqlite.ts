@@ -78,9 +78,30 @@ class SqliteStatement {
 
 export class SqliteDriver {
     private database: SqlJsDatabase
+    private filename: string
 
-    private constructor(database: SqlJsDatabase) {
+    private constructor(database: SqlJsDatabase, filename: string) {
         this.database = database
+        this.filename = filename
+    }
+
+    // 落盘到文件 (sql.js 内存库持久化)
+    persistNow(): void {
+        if (!this.filename || this.filename === ":memory:") {
+            return
+        }
+        try {
+            const data = this.database.export()
+            // 动态 import node:fs (仅 Node 环境调用; Cloudflare Worker 不调用 persistNow)
+            const fsPromise = import("node:fs") as Promise<typeof import("node:fs")>
+            fsPromise.then((fs) => {
+                fs.writeFileSync(this.filename, Buffer.from(data))
+            }).catch(() => {
+                // 非 Node 环境 (Worker) 忽略
+            })
+        } catch (error) {
+            console.error("[sqlite] persist failed:", error)
+        }
     }
 
     static async create(filename: string | ":memory:"): Promise<SqliteDriver> {
@@ -113,7 +134,24 @@ export class SqliteDriver {
             // 内存库忽略
         }
 
-        const driver = new SqliteDriver(database)
+        const driver = new SqliteDriver(database, filename)
+        // 周期性落盘 (sql.js 内存库 -> 文件), 防止重启丢数据 (仅 Node 环境)
+        if (filename && filename !== ":memory:") {
+            const g = globalThis as any
+            if (typeof g.setInterval === "function") {
+                g.setInterval(() => driver.persistNow(), 8000)
+            }
+            const handleExit = () => {
+                driver.persistNow()
+                if (typeof g.process?.exit === "function") {
+                    g.process.exit(0)
+                }
+            }
+            if (typeof g.process?.once === "function") {
+                g.process.once("SIGINT", handleExit)
+                g.process.once("SIGTERM", handleExit)
+            }
+        }
         return driver
     }
 

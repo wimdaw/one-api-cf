@@ -9,7 +9,7 @@ A distributed, low-latency, high-performance AI unified gateway built on Cloudfl
 </div>
 
 <div align="right">
-Forked and AI-driven derivative of <a href="https://github.com/dreamhunter2333/awsl-one-api" target="_blank">dreamhunter2333/awsl-one-api</a>
+Credits: built on top of <a href="https://github.com/Tokinx/one-api-workers" target="_blank">one-api-workers</a>, informed by the architecture of <a href="https://github.com/yutian81/ai-gateway" target="_blank">ai-gateway</a>, and inspired by <a href="https://github.com/dreamhunter2333/awsl-one-api" target="_blank">dreamhunter2333/awsl-one-api</a>
 </div>
 
 ## Overview
@@ -18,7 +18,7 @@ Forked and AI-driven derivative of <a href="https://github.com/dreamhunter2333/a
 - Unified proxy entry: supports `/v1/chat/completions`, `/v1/messages`, `/v1/responses`, `/v1/audio/speech`, `/v1/models`
 - Load-balancing routing: weight-based routing, multi-key per channel, failure retry, key rotation, and cross-channel fallback
 - Quota & billing: token-level quota control, global model pricing, channel-level model pricing
-- Observability: writes to Cloudflare Analytics Engine; dashboard provides overview, trends, distributions, and usage log search
+- Observability: writes to Cloudflare Analytics Engine on Workers/Pages; writes to a local database (SQLite/MySQL/PostgreSQL) on Docker/self-hosted — full overview, trends, breakdowns, and usage log search in both modes
 - Admin dashboard: React + Vite management UI covering channels, tokens, pricing, API testing, system settings
 - Admin security: default admin token login, optional Telegram two-factor verification, rate-limited login chain and session cookies
 - API docs: Swagger, ReDoc, and OpenAPI JSON exposed via Chanfana, togglable in system settings
@@ -211,6 +211,11 @@ Issues and Pull Requests are welcome.
 ## License
 
 MIT License
+
+**Credits**
+- <a href="https://github.com/Tokinx/one-api-workers" target="_blank">one-api-workers</a> — base capability of this project
+- <a href="https://github.com/yutian81/ai-gateway" target="_blank">ai-gateway</a> — reference for lightweight gateway & multi-channel orchestration
+- <a href="https://github.com/dreamhunter2333/awsl-one-api" target="_blank">dreamhunter2333/awsl-one-api</a> — early models and ideas
 
 Credits: <a href="https://github.com/dreamhunter2333/awsl-one-api" target="_blank">dreamhunter2333/awsl-one-api</a>
 

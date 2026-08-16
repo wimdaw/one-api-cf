@@ -1,7 +1,14 @@
 import { Context } from "hono";
 
 import { BILLING_RAW_SCALE, LEGACY_TO_RAW_FACTOR } from "../billing";
-import { DEFAULT_USAGE_ANALYTICS_DATASET_NAME } from "./usage-logger";
+import { DEFAULT_USAGE_ANALYTICS_DATASET_NAME, isLocalDbAnalyticsMode } from "./usage-logger";
+import {
+    queryLocalUsageOverview,
+    queryLocalUsageTrend,
+    queryLocalUsageBreakdown,
+    queryLocalUsageEvents,
+    queryLocalUsageLogRecords,
+} from "./db-query";
 import { t } from "../i18n";
 
 export type AnalyticsRange = "24h" | "7d" | "30d" | "90d";
@@ -714,6 +721,9 @@ export const queryUsageOverview = async (
     c: Context<HonoCustomType>,
     requestedRange?: string
 ) => {
+    if (isLocalDbAnalyticsMode(c)) {
+        return queryLocalUsageOverview(c, requestedRange);
+    }
     const { range, config } = getRangeConfig(requestedRange);
     if (isAnalyticsQueryDisabled(c)) {
         return buildEmptyOverviewResponse(range);
@@ -759,6 +769,9 @@ export const queryUsageTrend = async (
     c: Context<HonoCustomType>,
     requestedRange?: string
 ) => {
+    if (isLocalDbAnalyticsMode(c)) {
+        return queryLocalUsageTrend(c, requestedRange);
+    }
     const { range, config } = getRangeConfig(requestedRange);
     if (isAnalyticsQueryDisabled(c)) {
         return buildEmptyTrendResponse(range, config);
@@ -810,6 +823,9 @@ export const queryUsageBreakdown = async (
     requestedRange?: string,
     requestedDimension?: string
 ) => {
+    if (isLocalDbAnalyticsMode(c)) {
+        return queryLocalUsageBreakdown(c, requestedRange, requestedDimension);
+    }
     const { range, config } = getRangeConfig(requestedRange);
     const dimension = (requestedDimension && requestedDimension in BREAKDOWN_FIELDS
         ? requestedDimension
@@ -868,6 +884,9 @@ export const queryUsageEvents = async (
     requestedRange?: string,
     requestedLimit?: string
 ) => {
+    if (isLocalDbAnalyticsMode(c)) {
+        return queryLocalUsageEvents(c, requestedRange, requestedLimit);
+    }
     const { range, config } = getRangeConfig(requestedRange);
     if (isAnalyticsQueryDisabled(c)) {
         return buildEmptyEventsResponse(range);
@@ -978,6 +997,9 @@ export const queryUsageLogRecords = async (
     c: Context<HonoCustomType>,
     params: UsageLogQueryParams
 ) => {
+    if (isLocalDbAnalyticsMode(c)) {
+        return queryLocalUsageLogRecords(c, params);
+    }
     const lang = c.get('lang') || 'zh-CN';
     const timeWindow = buildCustomTimeWindow(params.start, params.end, lang);
     const requestedPage = Math.min(Math.max(Number(params.page || 1) || 1, 1), 1000);

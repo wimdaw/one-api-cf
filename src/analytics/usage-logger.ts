@@ -79,10 +79,99 @@ const getAnalyticsBinding = (c: Context<HonoCustomType>): AnalyticsEngineDataset
     return c.env.USAGE_ANALYTICS;
 };
 
+// 本地数据库模式: 无 CF Analytics 绑定, 但存在 DB (Docker/自托管)
+export const isLocalDbAnalyticsMode = (c: Context<HonoCustomType>): boolean => {
+    if (getAnalyticsBinding(c)) {
+        return false;
+    }
+
+    return Boolean(c.env.DB && typeof (c.env.DB as any).prepare === "function");
+};
+
+const writeLocalDbDataPoint = (
+    c: Context<HonoCustomType>,
+    point: AnalyticsEngineDataPoint
+): void => {
+    if (!isLocalDbAnalyticsMode(c)) {
+        return;
+    }
+
+    const blobs = point.blobs || [];
+    const doubles = point.doubles || [];
+    const timestamp = Math.floor(Date.now() / 1000);
+
+    const blobValue = (index: number): string => {
+        const value = blobs[index];
+        return typeof value === "string" ? value.slice(0, 200) : "";
+    };
+
+    const doubleValue = (index: number): number => {
+        const value = doubles[index];
+        return typeof value === "number" && Number.isFinite(value) ? value : 0;
+    };
+
+    const insertSql = `INSERT INTO usage_record (
+        timestamp, route_id, token_hash, token_name, channel_key, provider_type,
+        requested_model, upstream_model, result, stream_mode, error_code, status_family,
+        request_id, trace_id, client_ip, user_agent, country, region, city, colo, timezone, error_summary,
+        prompt_tokens, completion_tokens, cached_tokens, total_tokens, total_cost, cache_cost,
+        latency_ms, retry_count, upstream_status, success_flag, billing_scale
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    const db = (c.env.DB as any);
+    try {
+        db.prepare(insertSql).bind(
+            timestamp,
+            blobValue(0),   // routeId
+            (point.indexes && point.indexes[0]) || "",
+            blobValue(1),   // tokenName
+            blobValue(2),   // channelKey
+            blobValue(3),   // providerType
+            blobValue(4),   // requestedModel
+            blobValue(5),   // upstreamModel
+            blobValue(6),   // result
+            blobValue(7),   // streamMode
+            blobValue(8),   // errorCode
+            blobValue(9),   // statusFamily
+            blobValue(10),  // requestId
+            blobValue(11),  // traceId
+            blobValue(12),  // clientIp
+            blobValue(13),  // userAgent
+            blobValue(14),  // country
+            blobValue(15),  // region
+            blobValue(16),  // city
+            blobValue(17),  // colo
+            blobValue(18),  // timezone
+            blobValue(19),  // errorSummary
+            doubleValue(0),  // promptTokens
+            doubleValue(1),  // completionTokens
+            doubleValue(2),  // cachedTokens
+            doubleValue(3),  // totalTokens
+            doubleValue(4),  // totalCost
+            doubleValue(10), // cacheCost (index 10)
+            doubleValue(5),  // latencyMs
+            doubleValue(6),  // retryCount
+            doubleValue(7),  // upstreamStatus
+            doubleValue(8),  // successFlag
+            doubleValue(9),  // billingScale
+        ).run().catch((error: unknown) => {
+            console.error("Failed to write local usage record:", error);
+        });
+    } catch (error) {
+        console.error("Failed to write local usage record:", error);
+    }
+};
+
 const writeDataPoint = (
     c: Context<HonoCustomType>,
     point: AnalyticsEngineDataPoint
 ) => {
+    // 本地数据库模式优先
+    if (isLocalDbAnalyticsMode(c)) {
+        writeLocalDbDataPoint(c, point);
+        return;
+    }
+
     const binding = getAnalyticsBinding(c);
     if (!binding) {
         return;

@@ -66,6 +66,50 @@ CREATE INDEX IF NOT EXISTS idx_admin_rate_limit_category_bucket
     ON admin_rate_limit (category, bucket_id);
 CREATE INDEX IF NOT EXISTS idx_admin_rate_limit_blocked_until
     ON admin_rate_limit (blocked_until);
+CREATE TABLE IF NOT EXISTS usage_record (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER NOT NULL,
+    route_id TEXT DEFAULT '',
+    token_hash TEXT DEFAULT '',
+    token_name TEXT DEFAULT '',
+    channel_key TEXT DEFAULT '',
+    provider_type TEXT DEFAULT '',
+    requested_model TEXT DEFAULT '',
+    upstream_model TEXT DEFAULT '',
+    result TEXT DEFAULT '',
+    stream_mode TEXT DEFAULT '',
+    error_code TEXT DEFAULT '',
+    status_family TEXT DEFAULT '',
+    request_id TEXT DEFAULT '',
+    trace_id TEXT DEFAULT '',
+    client_ip TEXT DEFAULT '',
+    user_agent TEXT DEFAULT '',
+    country TEXT DEFAULT '',
+    region TEXT DEFAULT '',
+    city TEXT DEFAULT '',
+    colo TEXT DEFAULT '',
+    timezone TEXT DEFAULT '',
+    error_summary TEXT DEFAULT '',
+    prompt_tokens INTEGER DEFAULT 0,
+    completion_tokens INTEGER DEFAULT 0,
+    cached_tokens INTEGER DEFAULT 0,
+    total_tokens INTEGER DEFAULT 0,
+    total_cost REAL DEFAULT 0,
+    cache_cost REAL DEFAULT 0,
+    latency_ms INTEGER DEFAULT 0,
+    retry_count INTEGER DEFAULT 0,
+    upstream_status INTEGER DEFAULT 0,
+    success_flag INTEGER DEFAULT 0,
+    billing_scale INTEGER DEFAULT 1000000
+);
+CREATE INDEX IF NOT EXISTS idx_usage_record_timestamp
+    ON usage_record (timestamp);
+CREATE INDEX IF NOT EXISTS idx_usage_record_token
+    ON usage_record (token_hash, timestamp);
+CREATE INDEX IF NOT EXISTS idx_usage_record_channel
+    ON usage_record (channel_key, timestamp);
+CREATE INDEX IF NOT EXISTS idx_usage_record_model
+    ON usage_record (requested_model, timestamp);
 `
 
 let dbReadyPromise: Promise<void> | null = null;

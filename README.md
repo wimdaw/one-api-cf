@@ -9,7 +9,7 @@
 </div>
 
 <div align="right">
-本项目基于 <a href="https://github.com/dreamhunter2333/awsl-one-api" target="_blank">dreamhunter2333/awsl-one-api</a> 由 AI 驱动二次开发
+致谢：本项目在 <a href="https://github.com/Tokinx/one-api-workers" target="_blank">one-api-workers</a> 的基础能力上二次开发，参考了 <a href="https://github.com/yutian81/ai-gateway" target="_blank">ai-gateway</a> 的架构设计，并借鉴 <a href="https://github.com/dreamhunter2333/awsl-one-api" target="_blank">dreamhunter2333/awsl-one-api</a> 的模型
 </div>
 
 ## 项目概览
@@ -18,7 +18,7 @@
 - 统一代理入口：支持 `/v1/chat/completions`、`/v1/messages`、`/v1/responses`、`/v1/audio/speech`、`/v1/models`
 - 负载均衡路由：支持按权重路由，单渠道多 Key，失败重试、Key 轮换和跨渠道 fallback
 - 配额与计费：支持 Token 级额度控制、全局模型定价、渠道级模型定价
-- 观测能力：写入 Cloudflare Analytics Engine，后台提供概览、趋势、分布和用量日志检索
+- 观测能力：Cloudflare 部署写入 Analytics Engine；Docker/自托管写入本地数据库（SQLite/MySQL/PostgreSQL），后台提供完整概览、趋势、分布和用量日志检索
 - 管理后台：React + Vite 管理界面，覆盖渠道、令牌、定价、API 测试、系统设置
 - 管理员安全：默认管理员令牌登录，可选 Telegram 二次验证，后台登录链路带限速与 session cookie
 - API 文档：基于 Chanfana 暴露 Swagger、ReDoc、OpenAPI JSON，可在系统设置中开关
@@ -209,7 +209,10 @@ cd frontend && bun run lint
 
 MIT License
 
-鸣谢：<a href="https://github.com/dreamhunter2333/awsl-one-api" target="_blank">dreamhunter2333/awsl-one-api</a>
+**致谢**
+- <a href="https://github.com/Tokinx/one-api-workers" target="_blank">one-api-workers</a> — 本项目的基础能力来源
+- <a href="https://github.com/yutian81/ai-gateway" target="_blank">ai-gateway</a> — 参考其轻量网关与多渠道编排设计
+- <a href="https://github.com/dreamhunter2333/awsl-one-api" target="_blank">dreamhunter2333/awsl-one-api</a> — 早期模型与理念
 
 ## 支持
 

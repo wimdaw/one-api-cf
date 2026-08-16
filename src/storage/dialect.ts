@@ -74,6 +74,8 @@ export function translateSql(sql: string, dialect: SqlDialect): string {
     if (dialect === "mysql") {
         // datetime('now') -> NOW()
         out = out.replace(datetimeNowRegex, "NOW()")
+        // AUTOINCREMENT -> AUTO_INCREMENT (MySQL 自增语法)
+        out = out.replace(/\bAUTOINCREMENT\b/gi, "AUTO_INCREMENT")
         // datetime(列名) 排序函数 -> 列名本身 (MySQL 无 datetime() 函数)
         out = out.replace(/\bdatetime\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/gi, "$1")
         // -- 先做 TEXT -> VARCHAR 转换 (列类型), 此时尚未引入 PRIMARY KEY 占位 --
@@ -123,6 +125,9 @@ export function translateSql(sql: string, dialect: SqlDialect): string {
         // sqlite_master 其他残留
         out = out.replace(/sqlite_master/gi, "INFORMATION_SCHEMA.TABLES")
     } else if (dialect === "postgres") {
+        // AUTOINCREMENT -> SERIAL (PG 自增语法)
+        out = out.replace(/\bINTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b/gi, "SERIAL PRIMARY KEY")
+        out = out.replace(/\bAUTOINCREMENT\b/gi, "")
         // 1. datetime('now'...) 函数 -> now()
         out = out.replace(datetimeNowRegex, "now()")
         // 2. datetime(列名) 排序函数 -> 列名本身 (PG 无 datetime() 函数; 这些列存 ISO 时间戳直接可排序)
