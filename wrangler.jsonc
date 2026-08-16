@@ -6,9 +6,7 @@
   "workers_dev": true,
   "secrets": {
     "required": [
-      "ADMIN_TOKEN",
-      "CF_API_TOKEN",
-      "CF_ACCOUNT_ID"
+      "ADMIN_TOKEN"
     ]
   },
   "assets": {
