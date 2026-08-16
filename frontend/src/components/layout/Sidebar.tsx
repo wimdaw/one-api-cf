@@ -175,7 +175,7 @@ export function Sidebar({
         ) : (
           <>
             <div className="w-full flex items-center justify-center gap-2.5">
-              <span className="font-semibold text-[14px] tracking-tight leading-tight">One API On Cloudflare</span>
+              <span className="font-semibold text-[14px] tracking-tight leading-tight">AI Gateway</span>
             </div>
             {onClose && (
               <button
