@@ -224,16 +224,14 @@
   /* Gradient mesh background for hero */
   .gradient-mesh {
     background:
-      radial-gradient(ellipse at 20% 50%, hsl(234 89% 60% / 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, hsl(280 80% 60% / 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse at 40% 80%, hsl(142 71% 45% / 0.05) 0%, transparent 50%);
+      radial-gradient(ellipse at 25% 40%, hsl(234 89% 60% / 0.07) 0%, transparent 55%),
+      radial-gradient(ellipse at 75% 30%, hsl(234 60% 65% / 0.05) 0%, transparent 55%);
   }
 
   .dark .gradient-mesh {
     background:
-      radial-gradient(ellipse at 20% 50%, hsl(234 89% 60% / 0.12) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 20%, hsl(280 80% 60% / 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 40% 80%, hsl(142 71% 45% / 0.06) 0%, transparent 50%);
+      radial-gradient(ellipse at 25% 40%, hsl(234 89% 65% / 0.11) 0%, transparent 55%),
+      radial-gradient(ellipse at 75% 30%, hsl(234 60% 60% / 0.07) 0%, transparent 55%);
   }
 
   /* Shimmer effect */
