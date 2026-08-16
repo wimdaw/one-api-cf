@@ -89,7 +89,7 @@
     "adminLogin": "管理員登入"
   },
   "dashboard": {
-    "tagline": "One API On Cloudflare",
+    "tagline": "AI Gateway",
     "heroTitle": "基於 Cloudflare",
     "heroDescription": "基於 Cloudflare Workers & Pages\n分散式、低延遲、高效能的 AI 統一閘道",
     "featureMultiChannel": "多渠道支援",

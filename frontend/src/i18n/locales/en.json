@@ -89,7 +89,7 @@
     "adminLogin": "Admin Login"
   },
   "dashboard": {
-    "tagline": "One API On Cloudflare",
+    "tagline": "AI Gateway",
     "heroTitle": "Built on Cloudflare",
     "heroDescription": "Built on Cloudflare Workers & Pages\nDistributed, low-latency, high-performance AI unified gateway",
     "featureMultiChannel": "Multi-Channel",
