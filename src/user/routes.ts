@@ -111,6 +111,56 @@ async function updateMyProfile(c: Context<HonoCustomType>) {
     return c.json({ success: true, data: {} });
 }
 
+// 兑换码: 用户自助兑换, 为该用户增加额度 (原子)
+async function redeemCode(c: Context<HonoCustomType>) {
+    const user = getCurrentUser(c);
+    if (!user) {
+        return c.json({ success: false, error: "Unauthorized" }, 401);
+    }
+    const body = await c.req.json().catch(() => ({}));
+    const code = String(body.code || "").trim().toUpperCase();
+    if (!code) {
+        return c.json({ success: false, error: "Code is required" }, 400);
+    }
+
+    // 查找兑换码 (支持不带连字符的输入)
+    const normalized = code.replace(/-/g, "");
+    const result = await c.env.DB.prepare(
+        `SELECT * FROM redemption WHERE replace(code, '-', '') = ? AND status = 1`
+    ).bind(normalized).first();
+
+    if (!result) {
+        return c.json({ success: false, error: "Invalid redemption code" }, 404);
+    }
+    const redemption = result as any;
+    if ((redemption.redeemed_count || 0) >= (redemption.count || 1)) {
+        return c.json({ success: false, error: "Redemption code already used" }, 400);
+    }
+
+    const row = await c.env.DB.prepare(
+        `SELECT quota FROM users WHERE id = ?`
+    ).bind(user.id).first<{ quota: number }>();
+    const currentQuota = row?.quota ?? user.quota;
+    const addedQuota = Number(redemption.quota) || 0;
+    // 余额逐次累加: quota += 兑换额度
+    const newQuota = currentQuota === -1 ? -1 : (currentQuota || 0) + addedQuota;
+
+    await c.env.DB.prepare(
+        `UPDATE users SET quota = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(newQuota, user.id).run();
+
+    await c.env.DB.prepare(
+        `UPDATE redemption
+         SET redeemed_count = redeemed_count + 1, updated_at = datetime('now')
+         WHERE id = ?`
+    ).bind(redemption.id).run();
+
+    return c.json({
+        success: true,
+        data: { added_quota: addedQuota, new_quota: newQuota },
+    });
+}
+
 // 注册用户自助路由
 export function registerUserApi(app: any) {
     app.get("/api/user/token", requireUser, MyTokenListEndpoint.handler);
@@ -119,4 +169,5 @@ export function registerUserApi(app: any) {
     app.get("/api/user/profile", requireUser, myProfile);
     app.put("/api/user/profile", requireUser, updateMyProfile);
     app.get("/api/user/usage", requireUser, myUsage);
+    app.post("/api/user/redeem", requireUser, redeemCode);
 }

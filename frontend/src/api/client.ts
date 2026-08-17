@@ -457,6 +457,27 @@ export const apiClient = {
       body: JSON.stringify(data),
     }),
 
+  redeemCode: (code: string) =>
+    request<ApiResponse<{ added_quota: number; new_quota: number }>>('/api/user/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+
+  // 兑换码管理 (admin)
+  listRedemptions: () =>
+    request<ApiResponse<{ redemptions: RedemptionItem[] }>>('/api/admin/redemption', { method: 'GET' }),
+
+  createRedemptions: (data: { quota: number; count: number }) =>
+    request<ApiResponse<{ codes: string[]; count: number }>>('/api/admin/redemption', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deleteRedemption: (id: number) =>
+    request<ApiResponse<{ changes: number }>>(`/api/admin/redemption/${id}`, {
+      method: 'DELETE',
+    }),
+
   startAdminLogin: (token: string) =>
     request<ApiResponse<AdminLoginResponse>>('/api/admin/auth/login', {
       method: 'POST',

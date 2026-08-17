@@ -109,6 +109,17 @@ CREATE TABLE IF NOT EXISTS users (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS redemption (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    quota REAL DEFAULT 0,
+    count INTEGER DEFAULT 1,
+    redeemed_count INTEGER DEFAULT 0,
+    status INTEGER DEFAULT 1,
+    created_by INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 CREATE INDEX IF NOT EXISTS idx_admin_login_challenge_expires_at
     ON admin_login_challenge (expires_at);
 CREATE INDEX IF NOT EXISTS idx_admin_session_expires_at

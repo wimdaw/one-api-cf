@@ -61,7 +61,8 @@
     "collapse": "收起",
     "logout": "登出",
     "openSidebar": "開啟側邊欄",
-    "account": "個人中心"
+    "account": "個人中心",
+    "redemptions": "兌換碼"
   },
   "auth": {
     "title": "登入",
@@ -522,6 +523,28 @@
     "newPassword": "新密碼",
     "leaveBlank": "留空則不修改",
     "saveProfile": "保存資料",
-    "updated": "資料已更新"
+    "updated": "資料已更新",
+    "redeemTitle": "兌換碼充值",
+    "redeemPlaceholder": "輸入兌換碼 (如 XXXX-XXXX-XXXX-XXXX)",
+    "redeem": "兌換",
+    "redeemed": "兌換成功"
+  },
+  "redemptions": {
+    "title": "兌換碼",
+    "description": "生成兌換碼供用戶充值額度",
+    "generate": "生成兌換碼",
+    "quota": "額度",
+    "count": "數量",
+    "code": "兌換碼",
+    "redeemed": "已兌換",
+    "status": "狀態",
+    "actions": "操作",
+    "active": "有效",
+    "disabled": "停用",
+    "empty": "暫無兌換碼",
+    "copied": "已複製",
+    "delete": "刪除",
+    "created": "已生成",
+    "deleted": "已刪除"
   }
 }

@@ -61,7 +61,8 @@
     "collapse": "收起",
     "logout": "退出登录",
     "openSidebar": "打开侧边栏",
-    "account": "个人中心"
+    "account": "个人中心",
+    "redemptions": "兑换码"
   },
   "auth": {
     "title": "登录",
@@ -522,6 +523,28 @@
     "newPassword": "新密码",
     "leaveBlank": "留空则不修改",
     "saveProfile": "保存资料",
-    "updated": "资料已更新"
+    "updated": "资料已更新",
+    "redeemTitle": "兑换码充值",
+    "redeemPlaceholder": "输入兑换码 (如 XXXX-XXXX-XXXX-XXXX)",
+    "redeem": "兑换",
+    "redeemed": "兑换成功"
+  },
+  "redemptions": {
+    "title": "兑换码",
+    "description": "生成兑换码供用户充值额度",
+    "generate": "生成兑换码",
+    "quota": "额度",
+    "count": "数量",
+    "code": "兑换码",
+    "redeemed": "已兑换",
+    "status": "状态",
+    "actions": "操作",
+    "active": "有效",
+    "disabled": "禁用",
+    "empty": "暂无兑换码",
+    "copied": "已复制",
+    "delete": "删除",
+    "created": "已生成",
+    "deleted": "已删除"
   }
 }

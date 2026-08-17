@@ -15,6 +15,7 @@ import { NotFound } from "./pages/NotFound";
 import { SystemSettings } from "./pages/SystemSettings";
 import { Users } from "./pages/Users";
 import { MyAccount } from "./pages/MyAccount";
+import { Redemptions } from "./pages/Redemptions";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -152,6 +153,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <MyAccount />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/redemptions"
+              element={
+                <ProtectedRoute>
+                  <Redemptions />
                 </ProtectedRoute>
               }
             />

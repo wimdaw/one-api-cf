@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { copyToClipboard } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
-import { Plus, Copy, Trash2, KeyRound, Wallet, User as UserIcon } from "lucide-react";
+import { Plus, Copy, Trash2, KeyRound, Wallet, User as UserIcon, Gift } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface MyUsage { quota: number; used_quota: number; balance: number; total_usage: number; }
@@ -50,6 +50,16 @@ export function MyAccount() {
     onSuccess: () => { setPwd(""); addToast(t("account.updated"), "success"); },
   });
 
+  const [redeemCode, setRedeemCode] = useState("");
+  const redeemMutation = useMutation({
+    mutationFn: () => apiClient.redeemCode(redeemCode),
+    onSuccess: (res) => {
+      setRedeemCode("");
+      queryClient.invalidateQueries({ queryKey: ["my-usage"] });
+      addToast(`${t("account.redeemed")}: +${res?.data?.added_quota ?? 0}`, "success");
+    },
+  });
+
   const balance = usage?.balance ?? 0;
 
   return (
@@ -71,8 +81,24 @@ export function MyAccount() {
         </CardContent>
       </Card>
 
+      <Card className="border-0">
+        <CardContent className="p-5 flex items-end gap-3">
+          <div className="flex-1 space-y-2">
+            <Label className="flex items-center gap-1.5"><Gift className="h-4 w-4" />{t("account.redeemTitle")}</Label>
+            <Input
+              placeholder={t("account.redeemPlaceholder")}
+              value={redeemCode}
+              onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === "Enter" && redeemMutation.mutate()}
+            />
+          </div>
+          <Button onClick={() => redeemMutation.mutate()} disabled={!redeemCode || redeemMutation.isPending}>
+            {t("account.redeem")}
+          </Button>
+        </CardContent>
+      </Card>
+
       <div className="grid md:grid-cols-2 gap-6">
-        {/* 我的令牌 */}
         <Card className="border-0">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-4">

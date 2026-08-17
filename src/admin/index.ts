@@ -43,6 +43,11 @@ import {
     UserLoginEndpoint,
     UserLogoutEndpoint,
 } from "./user_auth_api"
+import {
+    RedemptionCreateEndpoint,
+    RedemptionListEndpoint,
+    RedemptionDeleteEndpoint,
+} from "./redemption_api"
 import { getSystemConfig, isTelegramSecurityEnabled } from "../system-config"
 import { t } from "../i18n"
 import {
@@ -166,3 +171,8 @@ app.delete("/api/admin/user/:id", UserDeleteEndpoint.handler)
 
 // 用户自助路由 (/api/user/*): 登录即可访问, 不要求管理员
 registerUserApi(app)
+
+// 兑换码管理路由 (admin)
+app.get("/api/admin/redemption", RedemptionListEndpoint.handler)
+app.post("/api/admin/redemption", RedemptionCreateEndpoint.handler)
+app.delete("/api/admin/redemption/:id", RedemptionDeleteEndpoint.handler)

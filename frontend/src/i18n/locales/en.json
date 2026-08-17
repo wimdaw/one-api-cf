@@ -61,7 +61,8 @@
     "collapse": "Collapse",
     "logout": "Logout",
     "openSidebar": "Open sidebar",
-    "account": "My Account"
+    "account": "My Account",
+    "redemptions": "Redemptions"
   },
   "auth": {
     "title": "Login",
@@ -522,6 +523,28 @@
     "newPassword": "New Password",
     "leaveBlank": "Leave blank to keep unchanged",
     "saveProfile": "Save Profile",
-    "updated": "Profile updated"
+    "updated": "Profile updated",
+    "redeemTitle": "Redeem Code",
+    "redeemPlaceholder": "Enter redemption code (e.g. XXXX-XXXX-XXXX-XXXX)",
+    "redeem": "Redeem",
+    "redeemed": "Redeemed"
+  },
+  "redemptions": {
+    "title": "Redemptions",
+    "description": "Generate redemption codes for users to top up quota",
+    "generate": "Generate Codes",
+    "quota": "Quota",
+    "count": "Count",
+    "code": "Code",
+    "redeemed": "Redeemed",
+    "status": "Status",
+    "actions": "Actions",
+    "active": "Active",
+    "disabled": "Disabled",
+    "empty": "No redemption codes",
+    "copied": "Copied",
+    "delete": "Delete",
+    "created": "Generated",
+    "deleted": "Deleted"
   }
 }

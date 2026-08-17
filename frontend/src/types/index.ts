@@ -100,6 +100,16 @@ export interface MyToken {
   created_at: string
 }
 
+export interface RedemptionItem {
+  id: number
+  code: string
+  quota: number
+  count: number
+  redeemed_count: number
+  status: number
+  created_at: string
+}
+
 export type PricingBillingMode = 'volume' | 'request'
 
 export interface PricingModel {
