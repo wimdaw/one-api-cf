@@ -26,7 +26,7 @@ export const UserListEndpoint = {
     },
     handler: async (c: Context<HonoCustomType>) => {
         const now = await c.env.DB.prepare(
-            "SELECT id, username, display_name, role, status, quota, used_quota, inviter_id, aff_code, created_at FROM users ORDER BY id ASC"
+            "SELECT id, username, email, display_name, role, status, quota, used_quota, inviter_id, aff_code, created_at FROM users ORDER BY id ASC"
         ).all();
         const users = (now.results || []).map((row: any) => ({
             ...row,
@@ -39,6 +39,7 @@ export const UserListEndpoint = {
 const userCreateInput = z.object({
     username: z.string().min(3).max(20),
     password: z.string().min(6).max(64),
+    email: z.string().email().max(100).optional().default(""),
     display_name: z.string().max(30).optional().default(""),
     quota: z.number().nonnegative().optional().default(0),
 });
@@ -54,7 +55,7 @@ export const UserCreateEndpoint = {
         if (!parsed.success) {
             return c.json({ success: false, error: parsed.error.issues[0].message }, 400);
         }
-        const { username, password, display_name, quota } = parsed.data;
+        const { username, password, display_name, email, quota } = parsed.data;
 
         const existing = await findUserByUsername(c, username);
         if (existing) {
@@ -65,9 +66,9 @@ export const UserCreateEndpoint = {
         const storedHash = `${salt}:${hash}`;
         const affCode = generateAffCode();
         const result = await c.env.DB.prepare(
-            `INSERT INTO users (username, password_hash, display_name, role, status, quota, used_quota, aff_code)
-             VALUES (?, ?, ?, ?, ?, ?, 0, ?)`
-        ).bind(username, storedHash, display_name, ROLE_USER, STATUS_ENABLED, quota, affCode).run();
+            `INSERT INTO users (username, password_hash, display_name, email, role, status, quota, used_quota, aff_code)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`
+        ).bind(username, storedHash, display_name, email, ROLE_USER, STATUS_ENABLED, quota, affCode).run();
 
         return c.json({ success: true, data: { changes: result.meta?.changes } });
     },
@@ -75,6 +76,7 @@ export const UserCreateEndpoint = {
 
 const userUpdateInput = z.object({
     display_name: z.string().max(30).optional(),
+    email: z.string().email().max(100).optional(),
     role: z.number().int().optional(),
     status: z.number().int().optional(),
     quota: z.number().nonnegative().optional(),
@@ -108,6 +110,7 @@ export const UserUpdateEndpoint = {
         const sets: string[] = [];
         const params: unknown[] = [];
         if (data.display_name !== undefined) { sets.push("display_name = ?"); params.push(data.display_name); }
+        if (data.email !== undefined) { sets.push("email = ?"); params.push(data.email); }
         if (data.role !== undefined) { sets.push("role = ?"); params.push(data.role); }
         if (data.status !== undefined) { sets.push("status = ?"); params.push(data.status); }
         if (data.quota !== undefined) { sets.push("quota = ?"); params.push(data.quota); }

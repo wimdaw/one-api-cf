@@ -48,6 +48,11 @@ import {
     RedemptionListEndpoint,
     RedemptionDeleteEndpoint,
 } from "./redemption_api"
+import {
+    InviteCodeCreateEndpoint,
+    InviteCodeListEndpoint,
+    InviteCodeDeleteEndpoint,
+} from "./invite_code_api"
 import { getSystemConfig, isTelegramSecurityEnabled } from "../system-config"
 import { t } from "../i18n"
 import {
@@ -178,6 +183,9 @@ registerUserApi(app)
 app.get("/api/admin/redemption", RedemptionListEndpoint.handler)
 app.post("/api/admin/redemption", RedemptionCreateEndpoint.handler)
 app.delete("/api/admin/redemption/:id", RedemptionDeleteEndpoint.handler)
+app.get("/api/admin/invite-code", InviteCodeListEndpoint.handler)
+app.post("/api/admin/invite-code", InviteCodeCreateEndpoint.handler)
+app.delete("/api/admin/invite-code/:id", InviteCodeDeleteEndpoint.handler)
 
 // 公开网站配置 (未登录可读, 用于首页展示站名/Logo)
 app.get("/api/system/config", async (c) => {

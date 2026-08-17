@@ -104,7 +104,14 @@
     "regDesc": "Create a new account to get started",
     "regInvalid": "Username >= 3 chars, password >= 6 chars",
     "regSuccess": "Registered, please login",
-    "regFailed": "Registration failed"
+    "regFailed": "Registration failed",
+    "inviteCode": "Invite code",
+    "inviteCodeVerification": "Invite-code registration",
+    "generateInviteCode": "Generate invite code",
+    "inviteCodes": "Invite codes",
+    "inviteQuota": "Signup quota",
+    "inviteCount": "Uses",
+    "inviteUsed": "Used"
   },
   "channels": {
     "title": "Channels",
@@ -542,7 +549,8 @@
     "roleRoot": "Root",
     "statusEnabled": "Enabled",
     "statusDisabled": "Disabled",
-    "toggleRoleTitle": "Toggle admin role"
+    "toggleRoleTitle": "Toggle admin role",
+    "email": "Email"
   },
   "account": {
     "balance": "Balance",

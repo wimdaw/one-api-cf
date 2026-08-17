@@ -259,6 +259,19 @@ export const apiClient = {
 
   getBillingConfig: () => request<ApiResponse<BillingConfig>>('/api/admin/billing/config', { method: 'GET' }),
 
+  // 邀请码管理
+  listInviteCodes: () =>
+    request<ApiResponse<{ inviteCodes: InviteCode[] }>>('/api/admin/invite-code', { method: 'GET' }),
+
+  createInviteCodes: (data: { quota: number; count: number }) =>
+    request<ApiResponse<{ codes: string[]; count: number }>>('/api/admin/invite-code', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deleteInviteCode: (id: number) =>
+    request<ApiResponse<{ changes: number }>>(`/api/admin/invite-code/${id}`, { method: 'DELETE' }),
+
   saveBillingConfig: (config: BillingConfig) =>
     request<ApiResponse<BillingConfig>>('/api/admin/billing/config', {
       method: 'POST',
@@ -426,7 +439,7 @@ export const apiClient = {
       skipUnauthorizedHandler: true,
     }),
 
-  registerUser: (data: { username: string; password: string; display_name?: string; inviter_code?: string }) =>
+  registerUser: (data: { username: string; password: string; display_name?: string; email?: string; invite_code?: string }) =>
     request<ApiResponse<{ changes: number; aff_code?: string }>>('/api/admin/user/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -458,13 +471,13 @@ export const apiClient = {
       method: 'GET',
     }),
 
-  createUser: (data: { username: string; password: string; display_name?: string; quota?: number }) =>
+  createUser: (data: { username: string; password: string; email?: string; display_name?: string; quota?: number }) =>
     request<ApiResponse<{ changes: number }>>('/api/admin/user', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  updateUser: (id: number, data: { display_name?: string; role?: number; status?: number; quota?: number; password?: string }) =>
+  updateUser: (id: number, data: { email?: string; display_name?: string; role?: number; status?: number; quota?: number; password?: string }) =>
     request<ApiResponse<{ changes: number }>>(`/api/admin/user/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

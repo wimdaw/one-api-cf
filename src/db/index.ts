@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     display_name TEXT DEFAULT '',
+    email TEXT DEFAULT '',
     role INTEGER DEFAULT 1,
     status INTEGER DEFAULT 1,
     quota REAL DEFAULT 0,
@@ -139,6 +140,16 @@ CREATE TABLE IF NOT EXISTS channel_key_health (
     channel_key TEXT PRIMARY KEY,
     health_json TEXT NOT NULL,
     updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS invite_code (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    quota REAL DEFAULT 0,
+    count INTEGER DEFAULT 1,
+    used_count INTEGER DEFAULT 0,
+    status INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_admin_login_challenge_expires_at
     ON admin_login_challenge (expires_at);

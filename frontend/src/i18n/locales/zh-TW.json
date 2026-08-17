@@ -104,7 +104,14 @@
     "regDesc": "創建一個新帳號，開始使用",
     "regInvalid": "用戶名至少 3 位，密碼至少 6 位",
     "regSuccess": "註冊成功，請登入",
-    "regFailed": "註冊失敗"
+    "regFailed": "註冊失敗",
+    "inviteCode": "邀請碼",
+    "inviteCodeVerification": "邀請碼註冊",
+    "generateInviteCode": "生成邀請碼",
+    "inviteCodes": "邀請碼管理",
+    "inviteQuota": "註冊贈送額度",
+    "inviteCount": "可用次數",
+    "inviteUsed": "已用次數"
   },
   "channels": {
     "title": "渠道管理",
@@ -520,7 +527,8 @@
     "roleRoot": "超級管理員",
     "statusEnabled": "正常",
     "statusDisabled": "停用",
-    "toggleRoleTitle": "切換管理員角色"
+    "toggleRoleTitle": "切換管理員角色",
+    "email": "郵箱"
   },
   "account": {
     "balance": "餘額",

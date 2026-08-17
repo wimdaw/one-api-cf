@@ -3,7 +3,6 @@ import { z } from "zod";
 import {
     findUserByUsername,
     generateAffCode,
-    getInviteQuotas,
     hashPassword,
     isEnabled,
     ROLE_USER,
@@ -24,7 +23,8 @@ const registerSchema = z.object({
     username: z.string().trim().min(3).max(20),
     password: z.string().min(6).max(64),
     display_name: z.string().trim().max(30).optional().default(""),
-    inviter_code: z.string().trim().optional(),
+    email: z.string().email().max(100).optional().default(""),
+    invite_code: z.string().trim().optional(),
 });
 
 export const UserRegisterEndpoint = {
@@ -34,7 +34,7 @@ export const UserRegisterEndpoint = {
         if (!parsed.success) {
             return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400);
         }
-        const { username, password, display_name, inviter_code } = parsed.data;
+        const { username, password, display_name, email, invite_code } = parsed.data;
 
         // 后台开关: 关闭注册时拒绝前台注册 (管理员仍可手动建号)
         const systemConfig = await getSystemConfig(c);
@@ -47,44 +47,34 @@ export const UserRegisterEndpoint = {
             return c.json({ success: false, error: "Username already exists" }, 409);
         }
 
-        // 邀请码: 根据邀请码找到邀请者
-        let inviterId: number | null = null;
-        if (inviter_code) {
-            const inviter = await c.env.DB.prepare(
-                "SELECT id FROM users WHERE aff_code = ?"
-            ).bind(inviter_code.trim().toUpperCase()).first<{ id: number }>();
-            if (inviter) {
-                inviterId = inviter.id;
+        // 邀请码: 注册需先校验邀请码 (可选; 提供则校验并消耗)
+        let inviteeQuota = 0;
+        if (invite_code) {
+            const normalizedCode = invite_code.trim().toUpperCase();
+            const invite = await c.env.DB.prepare(
+                `SELECT id, quota, count, used_count, status FROM invite_code WHERE code = ?`
+            ).bind(normalizedCode).first();
+            if (!invite || invite.status !== 1 || (invite.used_count || 0) >= (invite.count || 1)) {
+                return c.json({ success: false, error: "Invalid or expired invite code" }, 400);
             }
+            inviteeQuota = Number(invite.quota) || 0;
         }
 
         const { hash, salt } = await hashPassword(password);
         const storedHash = `${salt}:${hash}`;
         const affCode = generateAffCode();
 
-        // 注册返利额度
-        const { quotaForInvitee, quotaForInviter } = await getInviteQuotas(c);
-        const inviteeQuota = inviterId ? quotaForInvitee : 0;
-
         const result = await c.env.DB.prepare(
-            `INSERT INTO users (username, password_hash, display_name, role, status, quota, used_quota, inviter_id, aff_code)
-             VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`
-        ).bind(username, storedHash, display_name, ROLE_USER, STATUS_ENABLED, inviteeQuota, inviterId, affCode).run();
+            `INSERT INTO users (username, password_hash, display_name, email, role, status, quota, used_quota, aff_code)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`
+        ).bind(username, storedHash, display_name, email, ROLE_USER, STATUS_ENABLED, inviteeQuota, affCode).run();
 
-        // 邀请者返利 (超级管理员/管理员余额无限, 不参与返利加额度)
-        if (inviterId && quotaForInviter > 0) {
-            const inviterRow = await c.env.DB.prepare(
-                `SELECT role, quota FROM users WHERE id = ?`
-            ).bind(inviterId).first<{ role: number; quota: number }>();
-            const inviterRole = inviterRow?.role ?? ROLE_USER;
-            if (inviterRole < 10 && inviterRow && inviterRow.quota !== -1) {
-                await c.env.DB.prepare(
-                    `UPDATE users
-                     SET quota = quota + ?,
-                         updated_at = datetime('now')
-                     WHERE id = ?`
-                ).bind(quotaForInviter, inviterId).run();
-            }
+        // 消耗邀请码
+        if (invite_code) {
+            const normalizedCode = invite_code.trim().toUpperCase();
+            await c.env.DB.prepare(
+                `UPDATE invite_code SET used_count = used_count + 1, updated_at = datetime('now') WHERE code = ?`
+            ).bind(normalizedCode).run();
         }
 
         return c.json({
@@ -92,7 +82,6 @@ export const UserRegisterEndpoint = {
             data: {
                 changes: result.meta?.changes,
                 aff_code: affCode,
-                inviter_id: inviterId,
                 quota: inviteeQuota,
             },
         });

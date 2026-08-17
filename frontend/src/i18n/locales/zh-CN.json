@@ -104,7 +104,14 @@
     "regDesc": "创建一个新账号，开始使用",
     "regInvalid": "用户名至少 3 位，密码至少 6 位",
     "regSuccess": "注册成功，请登录",
-    "regFailed": "注册失败"
+    "regFailed": "注册失败",
+    "inviteCode": "邀请码",
+    "inviteCodeVerification": "邀请码注册",
+    "generateInviteCode": "生成邀请码",
+    "inviteCodes": "邀请码管理",
+    "inviteQuota": "注册赠送额度",
+    "inviteCount": "可用次数",
+    "inviteUsed": "已用次数"
   },
   "channels": {
     "title": "渠道管理",
@@ -542,7 +549,8 @@
     "roleRoot": "超级管理员",
     "statusEnabled": "正常",
     "statusDisabled": "禁用",
-    "toggleRoleTitle": "切换管理员角色"
+    "toggleRoleTitle": "切换管理员角色",
+    "email": "邮箱"
   },
   "account": {
     "balance": "余额",

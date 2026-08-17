@@ -18,7 +18,7 @@ export function Dashboard() {
   const { openAuthModal } = useAuthStore();
   const { addToast } = useToast();
   const [showRegister, setShowRegister] = useState(false);
-  const [regForm, setRegForm] = useState({ username: "", password: "", display_name: "" });
+  const [regForm, setRegForm] = useState({ username: "", password: "", email: "", invite_code: "" });
   const [regError, setRegError] = useState("");
   const [regSubmitting, setRegSubmitting] = useState(false);
 
@@ -31,9 +31,14 @@ export function Dashboard() {
     }
     setRegSubmitting(true);
     try {
-      await apiClient.registerUser({ username: regForm.username.trim(), password: regForm.password, display_name: regForm.display_name.trim() });
+      await apiClient.registerUser({
+        username: regForm.username.trim(),
+        password: regForm.password,
+        email: regForm.email.trim() || undefined,
+        invite_code: regForm.invite_code.trim() || undefined,
+      });
       setShowRegister(false);
-      setRegForm({ username: "", password: "", display_name: "" });
+      setRegForm({ username: "", password: "", email: "", invite_code: "" });
       addToast(t('dashboard.regSuccess'), "success");
       openAuthModal();
     } catch (error) {
@@ -226,9 +231,14 @@ export function Dashboard() {
                     onChange={(e) => setRegForm({ ...regForm, username: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-display">{t('account.displayName')}</Label>
-                  <Input id="reg-display" value={regForm.display_name}
-                    onChange={(e) => setRegForm({ ...regForm, display_name: e.target.value })} />
+                  <Label htmlFor="reg-email">{t('users.email')}</Label>
+                  <Input id="reg-email" type="email" value={regForm.email}
+                    onChange={(e) => setRegForm({ ...regForm, email: e.target.value })} placeholder="user@example.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reg-invite">{t('dashboard.inviteCode')}</Label>
+                  <Input id="reg-invite" value={regForm.invite_code}
+                    onChange={(e) => setRegForm({ ...regForm, invite_code: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reg-password">{t('auth.passwordLabel')}</Label>

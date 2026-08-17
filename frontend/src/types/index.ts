@@ -100,9 +100,20 @@ export interface UserSelfInfo {
   balance: number
 }
 
+export interface InviteCode {
+  id: number
+  code: string
+  quota: number
+  count: number
+  used_count: number
+  status: number
+  created_at: string
+}
+
 export interface AdminUser {
   id: number
   username: string
+  email?: string
   display_name: string
   role: number
   status: number

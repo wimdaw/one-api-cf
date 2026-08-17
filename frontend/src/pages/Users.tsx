@@ -27,7 +27,7 @@ export function Users() {
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<AdminUser | null>(null);
-  const [form, setForm] = useState({ username: "", password: "", display_name: "", quota: "0" });
+  const [form, setForm] = useState({ username: "", password: "", email: "", quota: "0" });
 
   const { data, isLoading } = useQuery({
     queryKey: ["users"],
@@ -39,7 +39,7 @@ export function Users() {
 
   const users = (data ?? []).filter((u) =>
     u.username.toLowerCase().includes(search.toLowerCase()) ||
-    u.display_name?.toLowerCase().includes(search.toLowerCase())
+    (u.email || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -48,7 +48,7 @@ export function Users() {
     mutationFn: () => apiClient.createUser({
       username: form.username,
       password: form.password,
-      display_name: form.display_name,
+      email: form.email,
       quota: Number(form.quota) || 0,
     }),
     onSuccess: () => { invalidate(); setShowCreate(false); resetForm(); addToast(t("users.created"), "success"); },
@@ -56,7 +56,7 @@ export function Users() {
 
   const updateMutation = useMutation({
     mutationFn: (id: number) => apiClient.updateUser(id, {
-      display_name: form.display_name,
+      email: form.email,
       password: form.password || undefined,
       quota: form.quota !== "" ? Number(form.quota) : undefined,
     }),
@@ -74,7 +74,7 @@ export function Users() {
     onSuccess: () => { invalidate(); addToast(t("users.deleted"), "success"); },
   });
 
-  const resetForm = () => setForm({ username: "", password: "", display_name: "", quota: "0" });
+  const resetForm = () => setForm({ username: "", password: "", email: "", quota: "0" });
 
   const resetPassword = (u: AdminUser) => {
     const pwd = window.prompt(t("users.resetPasswordPrompt"));
@@ -131,7 +131,7 @@ export function Users() {
                   <tr className="border-b text-muted-foreground">
                     <th className="text-left py-2 pr-4 font-medium">ID</th>
                     <th className="text-left py-2 pr-4 font-medium">{t("users.username")}</th>
-                    <th className="text-left py-2 pr-4 font-medium">{t("users.displayName")}</th>
+                    <th className="text-left py-2 pr-4 font-medium">{t("users.email")}</th>
                     <th className="text-left py-2 pr-4 font-medium">{t("users.role")}</th>
                     <th className="text-left py-2 pr-4 font-medium">{t("users.status")}</th>
                     <th className="text-right py-2 pr-4 font-medium">{t("users.balance")}</th>
@@ -143,7 +143,7 @@ export function Users() {
                     <tr key={u.id} className="border-b hover:bg-muted/50">
                       <td className="py-2 pr-4">{u.id}</td>
                       <td className="py-2 pr-4 font-medium">{u.username}</td>
-                      <td className="py-2 pr-4 text-muted-foreground">{u.display_name || "-"}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">{u.email || "-"}</td>
                       <td className="py-2 pr-4">
                         <div className="flex items-center gap-2">
                           <Badge variant={u.role >= ROLE_ADMIN ? "default" : "secondary"}>{roleLabel(u.role)}</Badge>
@@ -162,7 +162,7 @@ export function Users() {
                       <td className="py-2 pr-4 text-right">{u.balance < 0 ? t("common.unlimited") : u.balance.toFixed(2)}</td>
                       <td className="py-2 text-right whitespace-nowrap">
                         <Button variant="ghost" size="icon" className="h-7 w-7"
-                          onClick={() => { setEditing(u); setForm({ username: u.username, password: "", display_name: u.display_name || "", quota: String(u.quota) }); }}
+                          onClick={() => { setEditing(u); setForm({ username: u.username, password: "", email: u.email || "", quota: String(u.quota) }); }}
                           title={t("users.edit")}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
@@ -204,8 +204,8 @@ export function Users() {
               <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>{t("users.displayName")}</Label>
-              <Input value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
+              <Label>{t("users.email")}</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@example.com" />
             </div>
             <div className="space-y-2">
               <Label>{t("users.quota")}</Label>
@@ -230,8 +230,8 @@ export function Users() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>{t("users.displayName")}</Label>
-              <Input value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
+              <Label>{t("users.email")}</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@example.com" />
             </div>
             <div className="space-y-2">
               <Label>{t("users.newPassword")}</Label>
