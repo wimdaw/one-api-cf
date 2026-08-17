@@ -246,6 +246,44 @@ async function myAnalytics(c: Context<HonoCustomType>) {
     });
 }
 
+// 用户可访问的渠道列表: 根据用户令牌的 channel_keys 过滤
+async function myChannels(c: Context<HonoCustomType>) {
+    const user = getCurrentUser(c);
+    if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
+
+    const rows = await c.env.DB.prepare(
+        "SELECT key, value FROM channel_config WHERE enabled = 1"
+    ).all<{ key: string; value: string }>();
+
+    const tokenRows = await c.env.DB.prepare(
+        "SELECT key, value FROM api_token"
+    ).all<{ key: string; value: string }>();
+
+    const allowedChannels = new Set<string>();
+    for (const row of tokenRows.results || []) {
+        try {
+            const data = JSON.parse(row.value);
+            if (data.user_id === user.id) {
+                const keys = data.channel_keys;
+                if (Array.isArray(keys) && keys.length > 0) {
+                    keys.forEach((k: string) => allowedChannels.add(k));
+                } else {
+                    // 空 channel_keys = 有全部渠道权限
+                    allowedChannels.clear();
+                    break;
+                }
+            }
+        } catch { continue; }
+    }
+
+    const result = (rows.results || []).filter((row) => {
+        if (allowedChannels.size === 0) return true;
+        return allowedChannels.has(row.key);
+    });
+
+    return c.json({ success: true, data: result });
+}
+
 // 注册用户自助路由
 export function registerUserApi(app: any) {
     app.get("/api/user/token", requireUser, MyTokenListEndpoint.handler);
@@ -258,4 +296,5 @@ export function registerUserApi(app: any) {
     app.get("/api/user/usage", requireUser, myUsage);
     app.post("/api/user/redeem", requireUser, redeemCode);
     app.get("/api/user/analytics", requireUser, myAnalytics);
+    app.get("/api/user/channels", requireUser, myChannels);
 }

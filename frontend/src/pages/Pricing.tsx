@@ -464,8 +464,7 @@ export function Pricing() {
   const channelsQuery = useQuery({
     queryKey: ["channels", "pricing", isAdminUser],
     queryFn: async () => {
-      if (!isAdminUser) return [] as Channel[];
-      const response = await apiClient.getChannels();
+      const response = isAdminUser ? await apiClient.getChannels() : await apiClient.myChannels();
       return response.data as Channel[];
     },
   });

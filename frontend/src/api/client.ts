@@ -502,6 +502,10 @@ export const apiClient = {
   myPricing: () =>
     request<ApiResponse<Record<string, unknown>>>('/api/user/pricing', { method: 'GET' }),
 
+  // 我可访问的渠道 (定价页显示模型-渠道匹配)
+  myChannels: () =>
+    request<ApiResponse>('/api/user/channels', { method: 'GET' }),
+
   // 我的计费配置 (只读)
   myBilling: () =>
     request<ApiResponse<BillingConfig>>('/api/user/billing', { method: 'GET' }),
