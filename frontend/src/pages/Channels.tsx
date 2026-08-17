@@ -32,6 +32,7 @@ import {
   Cpu,
   SlidersHorizontal,
   Sparkles,
+  CircleCheck,
 } from "lucide-react";
 import { PageContainer } from "@/components/ui/page-container";
 import { useTranslation } from "react-i18next";
@@ -754,6 +755,30 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
       addToast(t("channels.fetchModelsFailed", { message: error.message }), "error");
     },
   });
+
+  const [testModelDialogOpen, setTestModelDialogOpen] = useState(false);
+  const [testModelInput, setTestModelInput] = useState("");
+  const [testModelResult, setTestModelResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const testModelMutation = useMutation({
+    mutationFn: async ({ config, model }: { config: ChannelConfig; model: string }) => {
+      return apiClient.testChannelModel(config, model);
+    },
+    onSuccess: (response) => {
+      const data = (response.data as { ok?: boolean; endpoint?: string; model?: string; status?: number }) || {};
+      setTestModelResult({ ok: true, message: `OK (${data.endpoint || "?"}) · ${data.model || ""} · HTTP ${data.status ?? "?"}` });
+    },
+    onError: (error: Error) => {
+      setTestModelResult({ ok: false, message: error.message || "Connection failed" });
+    },
+  });
+
+  const openTestModelDialog = () => {
+    const models = getCurrentConfiguredModels();
+    const firstModel = models.find((m) => m.id)?.id || "";
+    setTestModelInput(firstModel);
+    setTestModelResult(null);
+    setTestModelDialogOpen(true);
+  };
 
   const resetForm = useCallback(() => {
     setFormData(createDefaultChannelFormData());
@@ -1616,6 +1641,16 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
                         <Sparkles className="h-4 w-4" />
                         {t("channels.fetchFreeModels")}
                       </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={openTestModelDialog}
+                        disabled={fetchModelsMutation.isPending}
+                      >
+                        <CircleCheck className="h-4 w-4" />
+                        {t("channels.testConnection")}
+                      </Button>
                     </div>
                   </div>
 
@@ -1774,6 +1809,46 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
                       {t("common.save")}
                     </Button>
                   </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={testModelDialogOpen} onOpenChange={setTestModelDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t("channels.testConnection")}</DialogTitle>
+                <DialogDescription>{t("channels.testConnectionDesc")}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">{t("channels.modelId")}</Label>
+                  <Input
+                    value={testModelInput}
+                    onChange={(e) => setTestModelInput(e.target.value)}
+                    placeholder="model-id"
+                    className="font-mono text-sm"
+                  />
+                </div>
+                {testModelResult && (
+                  <div className={`rounded-lg border p-3 text-sm ${testModelResult.ok ? "border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400" : "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400"}`}>
+                    {testModelResult.message}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button type="button" variant="outline" onClick={() => setTestModelDialogOpen(false)}>
+                    {t("common.cancel")}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={testModelMutation.isPending || !testModelInput}
+                    onClick={() => {
+                      setTestModelResult(null);
+                      testModelMutation.mutate({ config: formData, model: testModelInput });
+                    }}
+                  >
+                    {testModelMutation.isPending ? t("auth.sending") : t("channels.testConnection")}
+                  </Button>
                 </div>
               </div>
             </DialogContent>

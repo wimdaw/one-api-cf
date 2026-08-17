@@ -51,6 +51,7 @@ export class TokenUpsertEndpoint extends OpenAPIRoute {
                             channel_keys: z.array(z.string()).describe('Channel keys to bind (empty array means access to all channels)'),
                             total_quota: z.union([z.literal(-1), z.number().int().nonnegative()])
                                 .describe('Total quota amount in raw billing units, -1 means unlimited'),
+                            expires_at: z.number().optional().describe('Expiry timestamp (ms, Date.now()); omit for no expiry'),
                         }),
                     },
                 },

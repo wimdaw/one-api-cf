@@ -3,7 +3,7 @@ import { fromHono } from 'chanfana';
 import { DBInitializeEndpoint } from "./db_api"
 import db from "../db"
 import {
-    ChannelGetEndpoint, ChannelUpsertEndpoint, ChannelDeleteEndpoint, ChannelFetchModelsEndpoint
+    ChannelGetEndpoint, ChannelUpsertEndpoint, ChannelDeleteEndpoint, ChannelFetchModelsEndpoint, ChannelTestModelEndpoint
 } from "./channel_api"
 import {
     TokenListEndpoint, TokenUpsertEndpoint, TokenDeleteEndpoint, TokenResetUsageEndpoint
@@ -140,6 +140,7 @@ api.get("/api/admin/channel", ChannelGetEndpoint)
 api.post("/api/admin/channel/:key", ChannelUpsertEndpoint)
 api.delete("/api/admin/channel/:key", ChannelDeleteEndpoint)
 api.post("/api/admin/channel/models/fetch", ChannelFetchModelsEndpoint)
+api.post("/api/admin/channel/models/test", ChannelTestModelEndpoint)
 
 // Token management routes
 api.get("/api/admin/token", TokenListEndpoint)

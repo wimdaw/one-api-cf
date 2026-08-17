@@ -223,6 +223,12 @@ export const apiClient = {
       body: JSON.stringify(freeOnly ? { ...(config as object), free_only: true } : config),
     }),
 
+  testChannelModel: (config: unknown, model: string, message?: string) =>
+    request<ApiResponse>('/api/admin/channel/models/test', {
+      method: 'POST',
+      body: JSON.stringify({ ...(config as object), model, message }),
+    }),
+
   deleteChannel: (key: string) =>
     request(`/api/admin/channel/${encodeURIComponent(key)}`, { method: 'DELETE' }),
 

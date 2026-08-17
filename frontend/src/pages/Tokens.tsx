@@ -104,7 +104,9 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
     name: "",
     channel_keys: [],
     total_quota: 0,
+    expires_at: undefined,
   });
+  const [expiryInput, setExpiryInput] = useState("");
   const [tokenKey, setTokenKey] = useState(() => (createMode ? generateTokenKey() : ""));
   const [jsonValue, setJsonValue] = useState("");
   const [availableChannels, setAvailableChannels] = useState<string[]>([]);
@@ -160,6 +162,7 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
     setJsonValue(JSON.stringify(normalizedConfig, null, 2));
     setSelectedChannels(normalizedConfig.channel_keys);
     setQuotaInputValue(formatQuotaInputValue(normalizedConfig.total_quota, displayDecimals));
+    setExpiryInput(normalizedConfig.expires_at ? new Date(normalizedConfig.expires_at).toISOString().slice(0, 16) : "");
     setView("form");
   }, [displayDecimals]);
 
@@ -211,7 +214,8 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
   });
 
   const resetForm = useCallback(() => {
-    setFormData({ name: "", channel_keys: [], total_quota: 0 });
+    setFormData({ name: "", channel_keys: [], total_quota: 0, expires_at: undefined });
+    setExpiryInput("");
     setTokenKey("");
     setJsonValue("");
     setSelectedChannels([]);
@@ -306,6 +310,7 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
         ...formData,
         channel_keys: selectedChannels,
         total_quota: normalizeTokenQuota(formData.total_quota),
+        expires_at: expiryInput ? new Date(expiryInput).getTime() : undefined,
       };
     } else {
       try {
@@ -326,6 +331,7 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
         ...formData,
         channel_keys: selectedChannels,
         total_quota: normalizeTokenQuota(formData.total_quota),
+        expires_at: expiryInput ? new Date(expiryInput).getTime() : undefined,
       };
       setJsonValue(JSON.stringify(config, null, 2));
       setEditMode("json");
@@ -772,6 +778,24 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
                         className="h-10 items-center flex-nowrap"
                         buttonClassName="h-full w-full text-sm data-[state=on]:bg-green-100! data-[state=on]:text-white"
                       />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">{t('tokens.expiry')}</Label>
+                        <Input
+                          type="datetime-local"
+                          value={expiryInput}
+                          onChange={(e) => {
+                            setExpiryInput(e.target.value);
+                            setFormData({
+                              ...formData,
+                              expires_at: e.target.value ? new Date(e.target.value).getTime() : undefined,
+                            });
+                          }}
+                          className="h-10"
+                        />
+                        <p className="text-xs text-muted-foreground">{t('tokens.expiryHint')}</p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

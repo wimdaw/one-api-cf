@@ -198,7 +198,9 @@
       "defaultParamsJsonMustBeObject": "默认参数必须是 JSON 对象"
     },
     "mirrors": "镜像地址（自动故障转移）",
-    "mirrorsHint": "配置真实 Key 时优先官方地址，失败后自动切换镜像；免 Key 渠道直接使用镜像。每行一个 URL"
+    "mirrorsHint": "配置真实 Key 时优先官方地址，失败后自动切换镜像；免 Key 渠道直接使用镜像。每行一个 URL",
+    "testConnection": "测试连接",
+    "testConnectionDesc": "通过服务端代理测试模型连通性（无跨域限制）"
   },
   "tokens": {
     "title": "令牌管理",
@@ -241,7 +243,9 @@
     "channelsCount": "{{count}}个",
     "channelsCountWithUnit": "{{count}} 渠道",
     "usedAvailable": "已用/可用",
-    "resetQuota": "重置额度"
+    "resetQuota": "重置额度",
+    "expiry": "有效期至",
+    "expiryHint": "留空表示永久有效；到期后令牌自动失效"
   },
   "pricing": {
     "title": "定价管理",

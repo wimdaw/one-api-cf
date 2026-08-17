@@ -30,6 +30,16 @@ export const fetchTokenData = async (c: Context<HonoCustomType>, apiKey: string)
         return null;
     }
 
+    // 有效期校验: 已到期则视为无效 (ai-gateway 移植)
+    if (tokenData.expires_at) {
+        const expiresMs = typeof tokenData.expires_at === "number"
+            ? (tokenData.expires_at < 1e12 ? tokenData.expires_at * 1000 : tokenData.expires_at)
+            : Number(tokenData.expires_at);
+        if (Number.isFinite(expiresMs) && Date.now() >= expiresMs) {
+            return null;
+        }
+    }
+
     return {
         tokenData,
         usage: tokenResult.usage as number || 0,

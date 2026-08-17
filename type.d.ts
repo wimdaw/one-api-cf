@@ -165,6 +165,7 @@ type ApiTokenData = {
     channel_keys: string[];
     total_quota: number; // 原始计费单位整数，-1 表示无限额度
     user_id?: number; // 归属用户 (仅用户自助创建的令牌)
+    expires_at?: number; // 到期时间戳(秒, ms 单位 Date.now()); 未设置=永久有效。ai-gateway 移植
 }
 
 type RequestTrackingState = {

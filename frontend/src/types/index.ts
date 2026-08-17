@@ -38,6 +38,7 @@ export interface TokenConfig {
   name: string
   channel_keys?: string[]
   total_quota: number // 原始计费单位整数，-1 表示无限额度
+  expires_at?: number // 到期时间戳(ms), 未设置=永久有效
 }
 
 export interface BillingConfig {

@@ -46,6 +46,17 @@ export const MyTokenCreateEndpoint = {
         const body = await c.req.json().catch(() => ({}));
         const name = String(body.name || "").trim();
         const totalQuota = body.total_quota === -1 ? -1 : Number(body.total_quota) || 0;
+        // 可选有效期 (ms 时间戳), 校验为未来时间
+        let expiresAt: number | undefined;
+        const rawExpiry = Number(body.expires_at);
+        if (Number.isFinite(rawExpiry) && rawExpiry > 0) {
+            const expiryMs = rawExpiry < 1e12 ? rawExpiry * 1000 : rawExpiry;
+            if (expiryMs > Date.now()) {
+                expiresAt = expiryMs;
+            } else {
+                return c.json({ success: false, error: "Expiry must be in the future" }, 400);
+            }
+        }
 
         if (!name) {
             return c.json({ success: false, error: "Name is required" }, 400);
@@ -63,6 +74,7 @@ export const MyTokenCreateEndpoint = {
             channel_keys: [],
             total_quota: totalQuota,
             user_id: user.id,
+            expires_at: expiresAt,
         } as ApiTokenData);
 
         await c.env.DB.prepare(

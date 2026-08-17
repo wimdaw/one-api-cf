@@ -198,7 +198,9 @@
       "defaultParamsJsonMustBeObject": "Default parameters must be a JSON object"
     },
     "mirrors": "Mirror URLs (auto failover)",
-    "mirrorsHint": "With a real key, the official endpoint is tried first, then mirrors on failure; keyless channels use mirrors directly. One URL per line"
+    "mirrorsHint": "With a real key, the official endpoint is tried first, then mirrors on failure; keyless channels use mirrors directly. One URL per line",
+    "testConnection": "Test Connection",
+    "testConnectionDesc": "Test model connectivity via server-side proxy (no CORS restrictions)"
   },
   "tokens": {
     "title": "Tokens",
@@ -241,7 +243,9 @@
     "channelsCount": "{{count}}",
     "channelsCountWithUnit": "{{count}} channels",
     "usedAvailable": "Used/Available",
-    "resetQuota": "Reset Usage"
+    "resetQuota": "Reset Usage",
+    "expiry": "Expires at",
+    "expiryHint": "Leave empty for no expiry; token auto-disables after expiry"
   },
   "pricing": {
     "title": "Pricing",

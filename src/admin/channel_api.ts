@@ -325,6 +325,96 @@ export class ChannelFetchModelsEndpoint extends OpenAPIRoute {
     }
 }
 
+// 测试 Channel 模型连通性 (服务端代理, 避免 CORS; ai-gateway 移植)
+export class ChannelTestModelEndpoint extends OpenAPIRoute {
+    schema = {
+        tags: ['Admin API'],
+        summary: 'Test a model connection through the channel (server-side proxy)',
+        request: {
+            body: {
+                content: {
+                    'application/json': {
+                        schema: z.object({
+                            name: z.string().optional(),
+                            type: z.string().optional(),
+                            endpoint: z.string().optional(),
+                            api_key: z.string().optional(),
+                            api_keys: z.array(z.string()).optional(),
+                            mirrors: z.array(z.string()).optional(),
+                            model: z.string().describe('Model id to test'),
+                            message: z.string().optional().describe('Test prompt (default: hi)'),
+                        }),
+                    },
+                },
+            },
+        },
+        responses: {
+            ...CommonSuccessfulResponse(z.any()),
+            ...CommonErrorResponse,
+        },
+    };
+
+    async handle(c: Context<HonoCustomType>) {
+        const body = await c.req.json<Partial<ChannelConfig> & { model: string; message?: string }>();
+        const model = body.model;
+        if (!model) {
+            return c.text("model is required", 400);
+        }
+
+        const rawConfig: ChannelConfig = {
+            name: body.name || "test",
+            type: (body.type || "openai") as ChannelType,
+            endpoint: body.endpoint || "",
+            api_key: body.api_key,
+            api_keys: body.api_keys || (body.api_key ? [body.api_key] : []),
+            mirrors: body.mirrors,
+        };
+
+        if (!rawConfig.endpoint) {
+            return c.text("endpoint is required", 400);
+        }
+
+        // 服务端向渠道发最小 chat/completions 请求 (含 mirrors 故障转移)
+        const testPrompt = body.message || "hi";
+        const apiKeys = rawConfig.api_keys?.length ? rawConfig.api_keys : ["public"];
+        const allEndpoints = [rawConfig.endpoint, ...(rawConfig.mirrors || [])];
+        let lastError: string | null = null;
+
+        for (const endpoint of allEndpoints) {
+            for (const apiKey of apiKeys) {
+                try {
+                    const targetUrl = buildPrefixedTargetUrl(endpoint, "/chat/completions", "/v1", rawConfig.type);
+                    const headers = new Headers({ "Content-Type": "application/json" });
+                    headers.set("Authorization", `Bearer ${apiKey}`);
+                    const response = await fetch(targetUrl, {
+                        method: "POST",
+                        headers,
+                        body: JSON.stringify({
+                            model,
+                            messages: [{ role: "user", content: testPrompt }],
+                            max_tokens: 8,
+                            stream: false,
+                        }),
+                        signal: AbortSignal.timeout(60000),
+                    });
+                    if (response.ok) {
+                        const data = await response.json().catch(() => ({}));
+                        return {
+                            success: true,
+                            data: { ok: true, endpoint, model, status: response.status, usage: (data as any)?.usage || null },
+                        } as CommonResponse;
+                    }
+                    lastError = `HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`;
+                } catch (error) {
+                    lastError = error instanceof Error ? error.message : String(error);
+                }
+            }
+        }
+
+        return c.text(lastError || "All endpoints failed", 502);
+    }
+}
+
 // 删除 Channel 配置
 export class ChannelDeleteEndpoint extends OpenAPIRoute {
     schema = {
