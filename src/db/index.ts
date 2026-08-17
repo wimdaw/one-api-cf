@@ -19,6 +19,19 @@ async function ensureUsersAffCodeColumn(c: Context<HonoCustomType>): Promise<voi
   }
 }
 
+// 给 users 表补 email 列 (邮箱注册/找回/验证用)
+async function ensureUsersEmailColumn(c: Context<HonoCustomType>): Promise<void> {
+  const tableInfo = await c.env.DB.prepare(
+    `PRAGMA table_info(users)`
+  ).all<{ name: string }>();
+  const hasEmail = (tableInfo.results || []).some((col) => col.name === "email");
+  if (!hasEmail) {
+    await c.env.DB.prepare(
+      `ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''`
+    ).run();
+  }
+}
+
 // 给已有的 admin_session 表补 user_id 列 (旧库无此列, CREATE TABLE IF NOT EXISTS 不会修改旧表)
 async function ensureAdminSessionUserIdColumn(c: Context<HonoCustomType>): Promise<void> {
   const tableInfo = await c.env.DB.prepare(
@@ -416,6 +429,9 @@ const dbOperations = {
 
         // 列迁移: 给 users 表补 aff_code 列 (邀请码)
         await ensureUsersAffCodeColumn(c);
+
+        // 列迁移: 给 users 表补 email 列 (邮箱注册/找回/验证)
+        await ensureUsersEmailColumn(c);
 
         // Seed 默认免费渠道(OpenCode + Kilo Gateway)与默认管理员账号。
         // 移动到 version 检查之前: 老库(version 已最新)也能补齐种子 (均幂等)。
