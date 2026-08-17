@@ -6,7 +6,20 @@ import { sanitizeChannelConfig } from "../channel-config";
 import { seedFreeChannels } from "../seed-free-channels";
 import { hashPassword, ROLE_ROOT, STATUS_ENABLED } from "../user/auth";
 
-// 种子默认管理员账号: 首次部署自动创建 (用户名/密码来自环境变量)
+// 给已有的 admin_session 表补 user_id 列 (旧库无此列, CREATE TABLE IF NOT EXISTS 不会修改旧表)
+async function ensureAdminSessionUserIdColumn(c: Context<HonoCustomType>): Promise<void> {
+  const tableInfo = await c.env.DB.prepare(
+    `PRAGMA table_info(admin_session)`
+  ).all<{ name: string }>();
+  const hasUserId = (tableInfo.results || []).some((col) => col.name === "user_id");
+  if (!hasUserId) {
+    await c.env.DB.prepare(
+      `ALTER TABLE admin_session ADD COLUMN user_id INTEGER`
+    ).run();
+  }
+}
+
+// Seed 默认管理员账号: 首次部署自动创建 (用户名/密码来自环境变量)
 //   ADMIN_USERNAME: 默认管理员用户名 (默认 "admin")
 //   ADMIN_PASSWORD: 默认管理员密码 (默认取 ADMIN_TOKEN, 再回退 "admin")
 // 参照 one-api 超级管理员, 幂等(已存在则跳过)
@@ -355,6 +368,9 @@ const dbOperations = {
         await initializeSchema(c);
 
         await migrateApiTokenUsagePrecision(c);
+
+        // 列迁移: 给已有的 admin_session 表补 user_id 列 (CREATE TABLE IF NOT EXISTS 不会改旧表)
+        await ensureAdminSessionUserIdColumn(c);
 
         // Seed 默认免费渠道(OpenCode + Kilo Gateway)与默认管理员账号。
         // 移动到 version 检查之前: 老库(version 已最新)也能补齐种子 (均幂等)。
