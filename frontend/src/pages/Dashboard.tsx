@@ -117,14 +117,13 @@ export function Dashboard() {
                 onClick={openAuthModal}
                 className="h-12 px-6 text-[15px] shadow-lg shadow-primary/20"
               >
-                {t('auth.adminLogin')}
+                {t('auth.login')}
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
               <Button
                 size="lg"
-                variant="outline"
                 onClick={() => setShowRegister(true)}
-                className="h-12 px-6 text-[15px]"
+                className="h-12 px-6 text-[15px] shadow-lg shadow-primary/20"
               >
                 {t('dashboard.register')}
               </Button>
