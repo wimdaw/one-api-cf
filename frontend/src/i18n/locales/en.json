@@ -441,7 +441,9 @@
     "noMatchingModels": "No matching models",
     "tokenRequired": "Please enter an API token",
     "bodyJsonError": "Invalid request body JSON",
-    "copyResponse": "Copy response"
+    "copyResponse": "Copy response",
+    "chooseFile": "Choose audio file…",
+    "fileRequired": "Please choose an audio file first"
   },
   "settings": {
     "title": "Settings",

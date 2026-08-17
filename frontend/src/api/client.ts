@@ -42,6 +42,7 @@ type RequestBehavior = {
 
 type TestApiOptions = {
   channelKey?: string
+  file?: File | null
 }
 
 type TestApiStreamOptions = TestApiOptions & {
@@ -314,18 +315,34 @@ export const apiClient = {
   testApi: async (endpoint: string, token: string, body: unknown, options: TestApiOptions = {}): Promise<TestResponse> => {
     const url = `${BASE_URL}${endpoint}`
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     }
     if (options.channelKey) {
       headers['x-channel-key'] = options.channelKey
     }
 
+    let requestBody: BodyInit
+    if (options.file) {
+      // multipart 上传: 音频转录/翻译等端点
+      const formData = new FormData()
+      formData.append('file', options.file)
+      if (body && typeof body === 'object') {
+        const record = body as Record<string, unknown>
+        if (typeof record.model === 'string') formData.append('model', record.model)
+        if (typeof record.prompt === 'string') formData.append('prompt', record.prompt)
+        if (typeof record.response_format === 'string') formData.append('response_format', record.response_format)
+      }
+      requestBody = formData
+    } else {
+      headers['Content-Type'] = 'application/json'
+      requestBody = JSON.stringify(body)
+    }
+
     const response = await fetch(url, {
       method: 'POST',
       credentials: 'omit',
       headers,
-      body: JSON.stringify(body),
+      body: requestBody,
     })
 
     if (response.ok) {

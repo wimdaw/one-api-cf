@@ -32,6 +32,15 @@ import { useTranslation } from 'react-i18next'
 
 type RequestBodyShape = Record<string, unknown>
 type ChatEndpoint = '/v1/chat/completions' | '/v1/messages'
+type MediaEndpoint =
+  | '/v1/audio/speech'
+  | '/v1/audio/transcriptions'
+  | '/v1/audio/translations'
+  | '/v1/images/generations'
+  | '/v1/images/edits'
+  | '/v1/videos/generations'
+  | '/v1/video/generations'
+type TestEndpoint = ChatEndpoint | MediaEndpoint
 type MessageRole = 'user' | 'assistant'
 type MessageStatus = 'idle' | 'streaming' | 'success' | 'error'
 
@@ -55,6 +64,20 @@ type SendConversationOptions = {
 }
 
 const chatEndpoints: ChatEndpoint[] = ['/v1/chat/completions', '/v1/messages']
+const mediaEndpoints: MediaEndpoint[] = [
+  '/v1/images/generations',
+  '/v1/images/edits',
+  '/v1/audio/speech',
+  '/v1/audio/transcriptions',
+  '/v1/audio/translations',
+  '/v1/videos/generations',
+  '/v1/video/generations',
+]
+const allEndpoints: TestEndpoint[] = [...chatEndpoints, ...mediaEndpoints]
+
+const isChatEndpoint = (endpoint: TestEndpoint): endpoint is ChatEndpoint => {
+  return chatEndpoints.includes(endpoint as ChatEndpoint)
+}
 
 const playgroundParamKeys = [
   'temperature',
@@ -88,9 +111,17 @@ const paramDefinitions: ParamDefinition[] = [
   { key: 'seed', type: 'number', step: 1, translationKey: 'apiTest.seed' },
 ]
 
-const endpointParamKeys: Record<ChatEndpoint, PlaygroundParamKey[]> = {
+const endpointParamKeys: Record<TestEndpoint, PlaygroundParamKey[]> = {
   '/v1/chat/completions': [...playgroundParamKeys],
   '/v1/messages': ['temperature', 'top_p', 'stream', 'max_tokens'],
+  // 媒体端点: 仅展示通用参数 (stream 仅聊天有效)
+  '/v1/images/generations': ['temperature', 'max_tokens'],
+  '/v1/images/edits': ['temperature', 'max_tokens'],
+  '/v1/audio/speech': ['max_tokens'],
+  '/v1/audio/transcriptions': ['max_tokens'],
+  '/v1/audio/translations': ['max_tokens'],
+  '/v1/videos/generations': ['max_tokens'],
+  '/v1/video/generations': ['max_tokens'],
 }
 
 // 最优默认参数: 覆盖生成质量/稳定性/多样性均衡 (OpenAI/Claude 通用最佳实践)
@@ -141,12 +172,48 @@ const stringifyRawResponse = (value: unknown): string => {
   return JSON.stringify(value, null, 2)
 }
 
-const parseAssistantContent = (endpoint: ChatEndpoint, result: unknown): string => {
+const parseAssistantContent = (endpoint: TestEndpoint, result: unknown): string => {
   if (!result || typeof result !== 'object') {
     return typeof result === 'string' ? result : JSON.stringify(result, null, 2)
   }
 
   const payload = result as Record<string, unknown>
+
+  // 图片生成: 提取图片 URL (支持 data:image/b64_json)
+  if (endpoint === '/v1/images/generations' || endpoint === '/v1/images/edits') {
+    const items = Array.isArray(payload.data) ? payload.data : []
+    const urls = items
+      .map((item) => {
+        if (typeof item === 'object' && item !== null) {
+          const record = item as Record<string, unknown>
+          if (typeof record.url === 'string') return record.url
+          if (typeof record.b64_json === 'string') return `data:image/png;base64,${record.b64_json}`
+        }
+        return ''
+      })
+      .filter(Boolean)
+    if (urls.length > 0) {
+      return urls.join('\n')
+    }
+    return JSON.stringify(result, null, 2)
+  }
+
+  // 视频生成: 展示任务信息 (id / status / url)
+  if (endpoint === '/v1/videos/generations' || endpoint === '/v1/video/generations') {
+    const urls: string[] = []
+    const payloadRecord = payload as Record<string, unknown>
+    const candidates = [payloadRecord.video, payloadRecord.url, payloadRecord.result]
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && (candidate.startsWith('http') || candidate.startsWith('data:'))) {
+        urls.push(candidate)
+      }
+    }
+    if (urls.length > 0) {
+      return urls.join('\n')
+    }
+    return JSON.stringify(result, null, 2)
+  }
+
   if (endpoint === '/v1/messages') {
     const blocks = Array.isArray(payload.content) ? payload.content : []
     const text = blocks
@@ -174,13 +241,59 @@ const parseAssistantContent = (endpoint: ChatEndpoint, result: unknown): string 
   return JSON.stringify(result, null, 2)
 }
 
+// 判断是否为音频响应 (blob URL 形式)
+const isAudioResponse = (result: unknown): result is { url: string } => {
+  return typeof result === 'object' && result !== null && 'url' in result && typeof (result as Record<string, unknown>).url === 'string'
+}
+
+// 智能渲染消息内容: 图片/视频 URL 显示媒体, 其余按文本
+function MessageContent({ content, endpoint, isUser }: { content: string; endpoint: TestEndpoint; isUser: boolean }) {
+  if (isUser || !content) {
+    return <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{content}</div>
+  }
+
+  // 多行内容: 逐行识别媒体
+  const lines = content.split('\n').filter(Boolean)
+  const mediaLines = lines.filter((line) => /^https?:\/\/.+/.test(line) || line.startsWith('data:image/'))
+  const textLines = lines.filter((line) => !mediaLines.includes(line))
+
+  const isImageEndpoint = endpoint === '/v1/images/generations' || endpoint === '/v1/images/edits'
+  const isVideoEndpoint = endpoint === '/v1/videos/generations' || endpoint === '/v1/video/generations'
+  const isAudioEndpoint = endpoint === '/v1/audio/speech'
+
+  return (
+    <div className="space-y-2">
+      {mediaLines.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {mediaLines.map((line, index) => (
+            <div key={index}>
+              {isImageEndpoint || line.startsWith('data:image/') ? (
+                <img src={line} alt={`generated-${index}`} className="max-w-[280px] rounded-lg border" />
+              ) : isVideoEndpoint ? (
+                <video src={line} controls className="max-w-[320px] rounded-lg border" />
+              ) : isAudioEndpoint ? (
+                <audio src={line} controls className="max-w-[280px]" />
+              ) : (
+                <a href={line} target="_blank" rel="noreferrer" className="text-sm text-primary underline break-all">{line}</a>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {textLines.length > 0 && (
+        <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{textLines.join('\n')}</div>
+      )}
+    </div>
+  )
+}
 export function ApiTest() {
   const { t } = useTranslation()
   const { addToast } = useToast()
   const abortControllerRef = useRef<AbortController | null>(null)
   const messageListRef = useRef<HTMLDivElement | null>(null)
 
-  const [endpoint, setEndpoint] = useState<ChatEndpoint>('/v1/chat/completions')
+  const [endpoint, setEndpoint] = useState<TestEndpoint>('/v1/chat/completions')
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [apiToken, setApiToken] = useState('')
   const [modelValue, setModelValue] = useState('')
   const [channelKey, setChannelKey] = useState('')
@@ -381,6 +494,26 @@ export function ApiTest() {
 
   const buildRequestPayload = (conversationMessages: PlaygroundMessage[]) => {
     const advancedBody = normalizeAdvancedBody()
+
+    // 媒体端点: 请求体为 { model, prompt/input, ...参数 }, 非对话结构
+    if (!isChatEndpoint(endpoint)) {
+      const lastUserMessage = [...conversationMessages].reverse().find((message) => message.role === 'user')
+      const promptText = lastUserMessage?.content?.trim() || ''
+      const mediaBody: RequestBodyShape = {
+        ...advancedBody,
+        model: modelValue,
+      }
+      if (endpoint === '/v1/audio/speech') {
+        mediaBody.input = promptText
+      } else if (endpoint === '/v1/audio/transcriptions' || endpoint === '/v1/audio/translations') {
+        // 文件上传类端点: body 走 multipart, 由 sendMediaRequest 处理
+        mediaBody.prompt = promptText
+      } else {
+        mediaBody.prompt = promptText
+      }
+      return mediaBody
+    }
+
     const cleanMessages = conversationMessages
       .filter((message) => message.role === 'user' || message.role === 'assistant')
       .filter((message) => message.status !== 'error')
@@ -456,6 +589,10 @@ export function ApiTest() {
       addToast(t('apiTest.modelRequired'), 'error')
       return
     }
+    if ((endpoint === '/v1/audio/transcriptions' || endpoint === '/v1/audio/translations') && !uploadFile) {
+      addToast(t('apiTest.fileRequired'), 'error')
+      return
+    }
 
     const nextUserMessage = userMessage || {
       id: createMessageId(),
@@ -497,7 +634,7 @@ export function ApiTest() {
     setStatusCode(null)
 
     const startTime = Date.now()
-    const isStreaming = body.stream === true
+    const isStreaming = isChatEndpoint(endpoint) && body.stream === true
 
     try {
       if (isStreaming) {
@@ -539,11 +676,12 @@ export function ApiTest() {
       }
 
       updateMessage(assistantMessage.id, (message) => ({ ...message, status: 'idle' }))
-      const result = await apiClient.testApi(endpoint, apiToken, body, { channelKey: channelKey || undefined })
+      const result = await apiClient.testApi(endpoint, apiToken, body, { channelKey: channelKey || undefined, file: uploadFile })
       setStatusCode(200)
       updateMessage(assistantMessage.id, (message) => ({
         ...message,
-        content: parseAssistantContent(endpoint, result),
+        // 音频响应 (blob URL) 直接透传用于播放; 其余走通用解析
+        content: isAudioResponse(result) ? result.url : parseAssistantContent(endpoint, result),
         rawResponse: result,
         status: 'success',
       }))
@@ -738,8 +876,8 @@ export function ApiTest() {
 
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('apiTest.endpoint')}</Label>
-              <Select value={endpoint} onChange={(event) => setEndpoint(event.target.value as ChatEndpoint)}>
-                {chatEndpoints.map((item) => (
+              <Select value={endpoint} onChange={(event) => setEndpoint(event.target.value as TestEndpoint)}>
+                {allEndpoints.map((item) => (
                   <option key={item} value={item}>{item}</option>
                 ))}
               </Select>
@@ -863,7 +1001,11 @@ export function ApiTest() {
                             </div>
                           </div>
                         ) : (
-                          <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content || (message.status === 'streaming' ? t('apiTest.streaming') : '')}</div>
+                          <MessageContent
+                            content={message.content || (message.status === 'streaming' ? t('apiTest.streaming') : '')}
+                            endpoint={endpoint}
+                            isUser={isUser}
+                          />
                         )}
 
                         {!isEditing && (
@@ -894,6 +1036,24 @@ export function ApiTest() {
             </div>
 
             <form onSubmit={handleSubmit} className="border-t p-4">
+              {(endpoint === '/v1/audio/transcriptions' || endpoint === '/v1/audio/translations') && (
+                <div className="mb-3 flex items-center gap-2">
+                  <label className="shrink-0 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                    {uploadFile ? <span className="text-primary">{uploadFile.name}</span> : t('apiTest.chooseFile')}
+                    <input
+                      type="file"
+                      accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.webm,.mp4,.mpeg,.mpga"
+                      className="hidden"
+                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                  {uploadFile && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setUploadFile(null)}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              )}
               <div className="flex gap-3">
                 <Textarea
                   value={inputValue}
