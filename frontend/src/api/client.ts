@@ -489,6 +489,10 @@ export const apiClient = {
   myPricing: () =>
     request<ApiResponse<Record<string, unknown>>>('/api/user/pricing', { method: 'GET' }),
 
+  // 我的计费配置 (只读)
+  myBilling: () =>
+    request<ApiResponse<BillingConfig>>('/api/user/billing', { method: 'GET' }),
+
   deleteMyToken: (key: string) =>
     request<ApiResponse<unknown>>(`/api/user/token/${encodeURIComponent(key)}`, {
       method: 'DELETE',

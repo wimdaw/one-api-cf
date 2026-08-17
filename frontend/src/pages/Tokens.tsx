@@ -225,6 +225,7 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
   });
 
   useEffect(() => {
+    if (!isAdminUser) return;
     const loadChannels = async () => {
       try {
         const response = await apiClient.getChannels();
@@ -235,7 +236,7 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
       }
     };
     loadChannels();
-  }, []);
+  }, [isAdminUser]);
 
   const openTokenForEdit = useCallback((token: Token) => {
     setEditingKey(token.key);

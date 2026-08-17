@@ -4,6 +4,17 @@ import { hashTokenKey } from "../analytics/usage-logger";
 import { MyTokenListEndpoint, MyTokenCreateEndpoint } from "./token_api";
 import { getJsonSetting } from "../utils";
 import { CONSTANTS } from "../constants";
+import { getSystemConfig } from "../system-config";
+import { normalizeBillingConfig } from "../billing";
+
+// 我的计费展示配置 (只读, 普通用户可读, 用于显示金额单位)
+async function myBilling(c: Context<HonoCustomType>) {
+    const user = getCurrentUser(c);
+    if (!user) {
+        return c.json({ success: false, error: "Unauthorized" }, 401);
+    }
+    return c.json({ success: true, data: normalizeBillingConfig(await getSystemConfig(c)) });
+}
 
 // 我的资料定价 (只读, 普通用户可查看定价, 不可编辑)
 async function myPricing(c: Context<HonoCustomType>) {
@@ -242,6 +253,7 @@ export function registerUserApi(app: any) {
     app.delete("/api/user/token/:key", requireUser, deleteMyToken);
     app.get("/api/user/profile", requireUser, myProfile);
     app.get("/api/user/pricing", requireUser, myPricing);
+    app.get("/api/user/billing", requireUser, myBilling);
     app.put("/api/user/profile", requireUser, updateMyProfile);
     app.get("/api/user/usage", requireUser, myUsage);
     app.post("/api/user/redeem", requireUser, redeemCode);
