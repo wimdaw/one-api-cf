@@ -252,7 +252,7 @@ async function myChannels(c: Context<HonoCustomType>) {
     if (!user) return c.json({ success: false, error: "Unauthorized" }, 401);
 
     const rows = await c.env.DB.prepare(
-        "SELECT key, value FROM channel_config WHERE enabled = 1"
+        "SELECT key, value FROM channel_config"
     ).all<{ key: string; value: string }>();
 
     const tokenRows = await c.env.DB.prepare(
