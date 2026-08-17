@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS admin_rate_limit (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    display_name TEXT DEFAULT '',
+    role INTEGER DEFAULT 1,
+    status INTEGER DEFAULT 1,
+    quota REAL DEFAULT 0,
+    used_quota REAL DEFAULT 0,
+    inviter_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 CREATE INDEX IF NOT EXISTS idx_admin_login_challenge_expires_at
     ON admin_login_challenge (expires_at);
 CREATE INDEX IF NOT EXISTS idx_admin_session_expires_at

@@ -31,6 +31,18 @@ import {
     AnalyticsEventsEndpoint,
     UsageLogSearchEndpoint,
 } from "./analytics_api"
+import {
+    UserListEndpoint,
+    UserCreateEndpoint,
+    UserUpdateEndpoint,
+    UserDeleteEndpoint,
+    UserSelfEndpoint,
+} from "./user_api"
+import {
+    UserRegisterEndpoint,
+    UserLoginEndpoint,
+    UserLogoutEndpoint,
+} from "./user_auth_api"
 import { getSystemConfig, isTelegramSecurityEnabled } from "../system-config"
 import { t } from "../i18n"
 import {
@@ -45,6 +57,8 @@ export const api = fromHono(app)
 const PUBLIC_AUTH_ROUTES = new Set([
     "/api/admin/auth/login",
     "/api/admin/auth/verify",
+    "/api/admin/user/register",
+    "/api/admin/user/login",
 ]);
 
 app.use('/api/admin/*', async (c, next) => {
@@ -90,6 +104,11 @@ app.use('/api/admin/*', async (c, next) => {
 
 api.post("/api/admin/db_initialize", DBInitializeEndpoint)
 
+// 用户认证路由 (公开: 注册/登录) - 用 Hono 原生挂载
+app.post("/api/admin/user/register", UserRegisterEndpoint.handler)
+app.post("/api/admin/user/login", UserLoginEndpoint.handler)
+app.post("/api/admin/user/logout", UserLogoutEndpoint.handler)
+
 // Authentication routes
 api.post("/api/admin/auth/login", AdminLoginStartEndpoint)
 api.post("/api/admin/auth/verify", AdminLoginVerifyEndpoint)
@@ -121,3 +140,10 @@ api.get("/api/admin/analytics/trend", AnalyticsTrendEndpoint)
 api.get("/api/admin/analytics/breakdown", AnalyticsBreakdownEndpoint)
 api.get("/api/admin/analytics/events", AnalyticsEventsEndpoint)
 api.get("/api/admin/usage-logs", UsageLogSearchEndpoint)
+
+// User management routes (admin) - Hono 原生
+app.get("/api/admin/user", UserListEndpoint.handler)
+app.post("/api/admin/user", UserCreateEndpoint.handler)
+app.get("/api/admin/user/self", UserSelfEndpoint.handler)
+app.put("/api/admin/user/:id", UserUpdateEndpoint.handler)
+app.delete("/api/admin/user/:id", UserDeleteEndpoint.handler)
