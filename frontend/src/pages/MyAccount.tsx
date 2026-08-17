@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { copyToClipboard } from "@/lib/utils";
+import { copyToClipboard, formatCurrency } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
 import { Plus, Copy, Trash2, KeyRound, Wallet, User as UserIcon, Gift, BarChart3 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -78,7 +78,7 @@ export function MyAccount() {
           </div>
           <div>
             <div className="text-sm text-muted-foreground">{t("account.balance")}</div>
-            <div className="text-3xl font-bold">{balance < 0 ? t("common.unlimited") : balance.toFixed(2)}</div>
+            <div className="text-3xl font-bold">{balance < 0 ? t("common.unlimited") : `$${balance.toFixed(6)}`}</div>
           </div>
           <div className="ml-auto text-right text-sm text-muted-foreground">
             <div>{t("account.username")}: {currentUser?.username}</div>
@@ -107,7 +107,7 @@ export function MyAccount() {
                 </div>
                 <div className="rounded-lg bg-muted/40 p-3">
                   <div className="text-xs text-muted-foreground">{t("account.costTotal")}</div>
-                  <div className="text-xl font-bold">{(dashboard.overview?.totals?.totalCost ?? 0).toFixed(4)}</div>
+                  <div className="text-xl font-bold">{formatCurrency(dashboard.overview?.totals?.totalCost ?? 0)}</div>
                 </div>
               </div>
               {dashboard.breakdown?.items && dashboard.breakdown.items.length > 0 && (
@@ -116,7 +116,7 @@ export function MyAccount() {
                   {dashboard.breakdown.items.slice(0, 8).map((m) => (
                     <div key={m.label} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground truncate">{m.label}</span>
-                      <span className="shrink-0">{m.requests} · {m.totalTokens}t</span>
+                      <span className="shrink-0">{m.requests} 次 · {m.totalTokens} tokens</span>
                     </div>
                   ))}
                 </div>
