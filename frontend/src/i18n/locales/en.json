@@ -255,7 +255,9 @@
     "expiry": "Expires at",
     "expiryHint": "Leave empty for no expiry; token auto-disables after expiry",
     "selectAll": "Select all",
-    "clearAll": "Clear"
+    "clearAll": "Clear",
+    "myTokens": "My tokens",
+    "allTokens": "All tokens"
   },
   "pricing": {
     "title": "Pricing",

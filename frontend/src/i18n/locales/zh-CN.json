@@ -255,7 +255,9 @@
     "expiry": "有效期至",
     "expiryHint": "留空表示永久有效；到期后令牌自动失效",
     "selectAll": "全部选择",
-    "clearAll": "清空"
+    "clearAll": "清空",
+    "myTokens": "我的令牌",
+    "allTokens": "所有令牌"
   },
   "pricing": {
     "title": "定价管理",

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "@/api/client";
+import { useAuthStore } from "@/store/auth";
 import { Token, TokenConfig, Channel } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import {
   X,
   Search,
   RotateCcw,
+  ListFilter,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageContainer } from "@/components/ui/page-container";
@@ -95,6 +97,7 @@ const formatAvailableQuota = (value: number, unlimitedLabel: string): string => 
 
 export function Tokens({ createMode = false, editRoute = false }: { createMode?: boolean; editRoute?: boolean }) {
   const { t } = useTranslation();
+  const currentUser = useAuthStore((state) => state.currentUser);
   const navigate = useNavigate();
   const { key: routeKey } = useParams<{ key: string }>();
   const isRouteEdit = editRoute && Boolean(routeKey);
@@ -113,6 +116,7 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
   const [availableChannels, setAvailableChannels] = useState<string[]>([]);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAllTokens, setShowAllTokens] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const { addToast } = useToast();
@@ -368,8 +372,14 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
   };
 
   const filteredData = data?.filter((token) => {
-    if (!searchQuery) return true;
     const config = typeof token.value === "string" ? JSON.parse(token.value) : token.value;
+    // 默认只显示当前管理员创建的令牌 (token 归属 user_id == 当前登录用户 id)
+    // 旧令牌无 user_id 视为管理员创建; 开启"所有令牌"后显示全部
+    if (!showAllTokens) {
+      const tokenOwnerId = config.user_id ?? null;
+      if (tokenOwnerId !== null && tokenOwnerId !== currentUser?.id) return false;
+    }
+    if (!searchQuery) return true;
     return (
       config.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       token.key.toLowerCase().includes(searchQuery.toLowerCase())
@@ -384,6 +394,10 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
         description={t('tokens.description')}
         actions={
           <div className="flex items-center gap-2">
+            <Button variant={showAllTokens ? "default" : "outline"} size="sm" onClick={() => setShowAllTokens(!showAllTokens)}>
+              <ListFilter className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">{showAllTokens ? t('tokens.myTokens') : t('tokens.allTokens')}</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
             </Button>

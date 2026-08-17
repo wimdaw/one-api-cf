@@ -65,10 +65,14 @@ export class TokenUpsertEndpoint extends OpenAPIRoute {
 
     async handle(c: Context<HonoCustomType>) {
         const body = await c.req.json<ApiTokenData>();
-        const normalizedBody: ApiTokenData = {
+        // 记录创建者: 管理员用户会话写入其 user_id; 纯 ADMIN_TOKEN 模式无 user 则 null
+        const currentUser = c.get("user") as { id?: number } | null | undefined;
+        const tokenWithOwner: ApiTokenData = {
             ...body,
+            user_id: currentUser?.id ?? null,
             total_quota: TokenUtils.normalizeQuota(body.total_quota),
         };
+        const normalizedBody = tokenWithOwner;
         const { key } = c.req.param();
 
         // Validate channels exist using batch query (if channel_keys is not empty)

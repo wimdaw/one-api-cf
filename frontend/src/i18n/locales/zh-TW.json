@@ -239,7 +239,9 @@
     "channelsCount": "{{count}}個",
     "channelsCountWithUnit": "{{count}} 渠道",
     "usedAvailable": "已用/可用",
-    "resetQuota": "重設配額"
+    "resetQuota": "重設配額",
+    "myTokens": "我的令牌",
+    "allTokens": "所有令牌"
   },
   "pricing": {
     "title": "定價管理",
