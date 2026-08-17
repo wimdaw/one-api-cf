@@ -7,6 +7,7 @@ import claudeToOpenaiProxy from "../claude-to-openai-proxy"
 import openaiResponsesProxy from "../openai-responses-proxy"
 import azureOpenaiResponsesProxy from "../azure-openai-responses-proxy"
 import videoProxy from "../video-proxy"
+import azureTtsProxy from "../azure-tts-proxy"
 
 export type ProviderFetch = (
     c: Context<HonoCustomType>,
@@ -28,6 +29,7 @@ const providerMap: Record<string, ProviderFetch> = {
     "azure-openai-responses": azureOpenaiResponsesProxy.fetch,
     "openai-video": videoProxy.fetch,
     "agnes-video": videoProxy.fetch,
+    "azure-tts": azureTtsProxy.fetch,
 }
 
 export const getProvider = (type: string): ProviderFetch | undefined => {

@@ -27,12 +27,14 @@
     "mysql2": "^3.23.3",
     "pg": "^8.23.0",
     "sql.js": "^1.14.2",
+    "ws": "^8.21.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
     "@types/pg": "^8.21.0",
     "@types/sql.js": "^1.4.11",
+    "@types/ws": "^8.18.1",
     "concurrently": "^9.2.1",
     "typescript": "^6.0.2",
     "wrangler": "^4.81.0"

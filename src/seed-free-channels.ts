@@ -71,9 +71,31 @@ export const FREE_KILO_CHANNEL: ChannelConfig = {
     ],
 };
 
+// Azure TTS 免费语音渠道: 微软 Edge 在线语音服务, 免 key
+// 音色/语速/音量/音调可在后台渠道配置中调整 (voice/rate/volume/pitch)
+export const FREE_AZURE_TTS_CHANNEL: ChannelConfig = {
+    name: "Azure TTS (Free)",
+    type: "azure-tts",
+    endpoint: "https://speech.platform.bing.com",
+    enabled: true,
+    weight: 0,
+    api_key: "public",
+    api_keys: ["public"],
+    auto_retry: true,
+    auto_rotate: false,
+    voice: "zh-CN-XiaoxiaoNeural",  // 默认音色: 晓晓 (微软默认)
+    rate: "+0%",
+    volume: "+0%",
+    pitch: "+0Hz",
+    models: [
+        { id: "azure-tts", name: "azure-tts" },
+    ],
+};
+
 export const FREE_CHANNEL_PRESETS: { key: string; config: ChannelConfig }[] = [
     { key: "opencode-free", config: FREE_OPENCODE_CHANNEL },
     { key: "kilo-free", config: FREE_KILO_CHANNEL },
+    { key: "azure-tts-free", config: FREE_AZURE_TTS_CHANNEL },
 ];
 
 // 校验:渠道 config 是否已存在于 channel_config 表

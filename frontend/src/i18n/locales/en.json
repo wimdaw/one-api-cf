@@ -200,7 +200,15 @@
     "mirrors": "Mirror URLs (auto failover)",
     "mirrorsHint": "With a real key, the official endpoint is tried first, then mirrors on failure; keyless channels use mirrors directly. One URL per line",
     "testConnection": "Test Connection",
-    "testConnectionDesc": "Test model connectivity via server-side proxy (no CORS restrictions)"
+    "testConnectionDesc": "Test model connectivity via server-side proxy (no CORS restrictions)",
+    "ttsSettings": "Speech Settings (Azure TTS)",
+    "ttsVoice": "Voice",
+    "ttsPreset": "Preset voice",
+    "ttsCustomVoice": "Voice name (custom)",
+    "ttsRate": "Rate",
+    "ttsVolume": "Volume",
+    "ttsPitch": "Pitch",
+    "ttsHint": "Rate format: +10% / -20%; Volume: +0% / +50%; Pitch: +0Hz / -5Hz. Request body voice/rate/volume/pitch can override."
   },
   "tokens": {
     "title": "Tokens",

@@ -220,6 +220,23 @@ const normalizeChannelFormConfig = (config: ChannelConfig): ChannelConfig => {
   };
 };
 
+// Azure TTS 预设音色列表 (用于前端音色下拉)
+const PRESET_VOICES = [
+  "zh-CN-XiaoxiaoNeural",
+  "zh-CN-YunxiNeural",
+  "zh-CN-YunyangNeural",
+  "zh-CN-XiaoyiNeural",
+  "zh-CN-YunxiaNeural",
+  "zh-CN-liaoning-XiaobeiNeural",
+  "zh-CN-shaanxi-XiaoniNeural",
+  "en-US-AvaNeural",
+  "en-US-AndrewNeural",
+  "en-US-AriaNeural",
+  "en-GB-RyanNeural",
+  "ja-JP-NanamiNeural",
+  "ko-KR-SunHiNeural",
+];
+
 const parseChannelValue = (channel: Channel): ChannelConfig => {
   if (typeof channel.value !== "string") {
     return channel.value;
@@ -1574,8 +1591,89 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
                         className="font-mono text-sm"
                       />
                       <p className="text-xs text-muted-foreground">{t("channels.mirrorsHint")}</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          </div>
+                                          {formData.type === "azure-tts" && (
+                                            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-4">
+                                              <div className="text-sm font-medium">{t("channels.ttsSettings")}</div>
+                                              <div className="space-y-2">
+                                                <Label className="text-sm">{t("channels.ttsVoice")}</Label>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                  <div>
+                                                    <Label className="text-xs text-muted-foreground">{t("channels.ttsPreset")}</Label>
+                                                    <select
+                                                      className="flex h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-sm font-mono"
+                                                      value={PRESET_VOICES.includes(formData.voice || "") ? formData.voice : "__custom__"}
+                                                      onChange={(e) => {
+                                                        const v = e.target.value;
+                                                        if (v !== "__custom__") setFormData({ ...formData, voice: v });
+                                                      }}
+                                                    >
+                                                      <optgroup label="中文">
+                                                        <option value="zh-CN-XiaoxiaoNeural">晓晓 (zh-CN-XiaoxiaoNeural)</option>
+                                                        <option value="zh-CN-YunxiNeural">云希 (zh-CN-YunxiNeural)</option>
+                                                        <option value="zh-CN-YunyangNeural">云扬 (zh-CN-YunyangNeural)</option>
+                                                        <option value="zh-CN-XiaoyiNeural">晓伊 (zh-CN-XiaoyiNeural)</option>
+                                                        <option value="zh-CN-YunxiaNeural">云夏 (zh-CN-YunxiaNeural)</option>
+                                                        <option value="zh-CN-liaoning-XiaobeiNeural">晓北-辽宁 (zh-CN-liaoning-XiaobeiNeural)</option>
+                                                        <option value="zh-CN-shaanxi-XiaoniNeural">晓妮-陕西 (zh-CN-shaanxi-XiaoniNeural)</option>
+                                                      </optgroup>
+                                                      <optgroup label="English">
+                                                        <option value="en-US-AvaNeural">Ava (en-US-AvaNeural)</option>
+                                                        <option value="en-US-AndrewNeural">Andrew (en-US-AndrewNeural)</option>
+                                                        <option value="en-US-AriaNeural">Aria (en-US-AriaNeural)</option>
+                                                        <option value="en-GB-RyanNeural">Ryan-UK (en-GB-RyanNeural)</option>
+                                                      </optgroup>
+                                                      <optgroup label="日本語 / 한국어">
+                                                        <option value="ja-JP-NanamiNeural">Nanami (ja-JP-NanamiNeural)</option>
+                                                        <option value="ko-KR-SunHiNeural">SunHi (ko-KR-SunHiNeural)</option>
+                                                      </optgroup>
+                                                      <option value="__custom__">✍️ 自定义…</option>
+                                                    </select>
+                                                  </div>
+                                                  <div>
+                                                    <Label className="text-xs text-muted-foreground">{t("channels.ttsCustomVoice")}</Label>
+                                                    <Input
+                                                      value={formData.voice || ""}
+                                                      onChange={(e) => setFormData({ ...formData, voice: e.target.value })}
+                                                      placeholder="zh-CN-XiaoxiaoNeural"
+                                                      className="font-mono text-sm"
+                                                    />
+                                                  </div>
+                                                </div>
+                                              </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                                                  <div className="space-y-1.5">
+                                                    <Label className="text-sm">{t("channels.ttsRate")}</Label>
+                                                    <Input
+                                                      value={formData.rate || "+0%"}
+                                                      onChange={(e) => setFormData({ ...formData, rate: e.target.value })}
+                                                      placeholder="+0%"
+                                                      className="font-mono text-sm"
+                                                    />
+                                                  </div>
+                                                  <div className="space-y-1.5">
+                                                    <Label className="text-sm">{t("channels.ttsVolume")}</Label>
+                                                    <Input
+                                                      value={formData.volume || "+0%"}
+                                                      onChange={(e) => setFormData({ ...formData, volume: e.target.value })}
+                                                      placeholder="+0%"
+                                                      className="font-mono text-sm"
+                                                    />
+                                                  </div>
+                                                  <div className="space-y-1.5">
+                                                    <Label className="text-sm">{t("channels.ttsPitch")}</Label>
+                                                    <Input
+                                                      value={formData.pitch || "+0Hz"}
+                                                      onChange={(e) => setFormData({ ...formData, pitch: e.target.value })}
+                                                      placeholder="+0Hz"
+                                                      className="font-mono text-sm"
+                                                    />
+                                                  </div>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">{t("channels.ttsHint")}</p>
+                                              </div>
+                                          )}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <label className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30 cursor-pointer">
                         <Checkbox
                           className="mt-0.5"

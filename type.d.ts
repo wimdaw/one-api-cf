@@ -59,6 +59,7 @@ type ChannelType =
     | "azure-openai-responses"
     | "openai-video"
     | "agnes-video"
+    | "azure-tts"
     | undefined
     | null;
 
@@ -86,6 +87,11 @@ type ChannelConfig = {
     supported_models?: string[];
     deployment_mapper?: Record<string, string>;
     model_pricing?: Record<string, ModelPricing>;
+    // Azure TTS 语音合成参数 (azure-tts 渠道)
+    voice?: string;   // 音色 (如 zh-CN-XiaoxiaoNeural)
+    rate?: string;    // 语速 (如 +10% / -20%)
+    volume?: string;  // 音量 (如 +0% / +50%)
+    pitch?: string;   // 音调 (如 +0Hz / -5Hz)
 }
 
 type ChannelConfigMap = {

@@ -13,7 +13,7 @@ export interface ChannelModelMapping {
 
 export interface ChannelConfig {
   name: string
-  type: 'openai' | 'gemini' | 'azure-openai' | 'openai-audio' | 'azure-openai-audio' | 'claude' | 'claude-to-openai' | 'openai-responses' | 'azure-openai-responses' | 'openai-video' | 'agnes-video'
+  type: 'openai' | 'gemini' | 'azure-openai' | 'openai-audio' | 'azure-openai-audio' | 'claude' | 'claude-to-openai' | 'openai-responses' | 'azure-openai-responses' | 'openai-video' | 'agnes-video' | 'azure-tts'
   endpoint: string
   enabled?: boolean
   weight?: number
@@ -22,6 +22,10 @@ export interface ChannelConfig {
   auto_retry?: boolean
   auto_rotate?: boolean
   mirrors?: string[]
+  voice?: string
+  rate?: string
+  volume?: string
+  pitch?: string
   models?: ChannelModelMapping[]
   supported_models?: string[]
   deployment_mapper?: Record<string, string>

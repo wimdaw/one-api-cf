@@ -35,7 +35,7 @@ const ROUTE_POLICIES: Record<RouteId, RoutePolicy> = {
     "chat-completions": { allowedTypes: CHAT_COMPLETIONS_CHANNEL_TYPES },
     "messages":         { allowedTypes: MESSAGES_CHANNEL_TYPES },
     "responses":        { allowedTypes: ["openai-responses", "azure-openai-responses"] },
-    "audio-speech":     { allowedTypes: ["openai-audio", "azure-openai-audio"] },
+    "audio-speech":     { allowedTypes: ["openai-audio", "azure-openai-audio", "azure-tts"] },
     // 语音转写/翻译分文件上传,multipart
     "audio-transcriptions": { allowedTypes: OPENAI_TYPES, multipart: true },
     "audio-translations":   { allowedTypes: OPENAI_TYPES, multipart: true },
