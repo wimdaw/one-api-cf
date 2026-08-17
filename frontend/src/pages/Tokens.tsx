@@ -95,9 +95,91 @@ const formatAvailableQuota = (value: number, unlimitedLabel: string): string => 
   return `$${usdValue}`;
 };
 
+// 普通用户令牌面板: 只看自己的令牌, 可创建(默认全部渠道)/删除
+function UserTokensPanel() {
+  const { t } = useTranslation();
+  const { addToast } = useToast();
+  const queryClient = useQueryClient();
+  const [newName, setNewName] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+
+  const { data: tokens, isLoading } = useQuery({
+    queryKey: ["my-tokens"],
+    queryFn: async () => (await apiClient.myTokens()).data?.tokens ?? [],
+  });
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["my-tokens"] });
+
+  const createMutation = useMutation({
+    mutationFn: () => apiClient.createMyToken({ name: newName, total_quota: -1 }),
+    onSuccess: () => { invalidate(); setShowCreate(false); setNewName(""); addToast(t('tokens.addSuccess'), 'success'); },
+    onError: (e: any) => addToast(t('common.saveFailed', { message: e.message }), 'error'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (key: string) => apiClient.deleteMyToken(key),
+    onSuccess: () => { invalidate(); addToast(t('tokens.deleteSuccess'), 'success'); },
+    onError: (e: any) => addToast(t('common.deleteFailed', { message: e.message }), 'error'),
+  });
+
+  const handleCopy = async (text: string) => {
+    try { await copyToClipboard(text); addToast(t('common.copiedToClipboard'), 'success'); }
+    catch { addToast(t('common.copyFailed'), 'error'); }
+  };
+
+  return (
+    <PageContainer title={t('tokens.title')} description={t('tokens.description')}
+      actions={
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4" /><span className="hidden sm:inline ml-1">{t('common.add')}</span>
+          </Button>
+        </div>
+      }>
+      {showCreate && (
+        <Card className="mb-4">
+          <CardContent className="p-4 flex gap-2">
+            <Input placeholder={t('account.tokenName')} value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <Button size="sm" onClick={() => createMutation.mutate()} disabled={!newName || createMutation.isPending}>
+              {t('common.save')}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setShowCreate(false); setNewName(""); }}>{t('common.cancel')}</Button>
+          </CardContent>
+        </Card>
+      )}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+      ) : !tokens || tokens.length === 0 ? (
+        <Card><CardContent className="flex flex-col items-center justify-center py-16 px-4">
+          <Key className="h-7 w-7 text-primary mb-4" />
+          <p className="text-sm text-muted-foreground">{t('account.noTokens')}</p>
+        </CardContent></Card>
+      ) : (
+        <div className="space-y-2">
+          {tokens.map((tok) => (
+            <Card key={tok.key}>
+              <CardContent className="p-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{tok.name}</div>
+                  <div className="text-xs text-muted-foreground font-mono truncate">{tok.key.slice(0, 24)}...</div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleCopy(tok.key)} title={t('account.copy')}><Copy className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteMutation.mutate(tok.key)} title={t('common.delete')}><Trash2 className="h-3.5 w-3.5" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </PageContainer>
+  );
+}
+
 export function Tokens({ createMode = false, editRoute = false }: { createMode?: boolean; editRoute?: boolean }) {
   const { t } = useTranslation();
   const currentUser = useAuthStore((state) => state.currentUser);
+  const isAdminUser = (currentUser?.role ?? 0) >= 10;
   const navigate = useNavigate();
   const { key: routeKey } = useParams<{ key: string }>();
   const isRouteEdit = editRoute && Boolean(routeKey);
@@ -134,8 +216,9 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
   ] as const;
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["tokens"],
+    queryKey: ["tokens", isAdminUser],
     queryFn: async () => {
+      if (!isAdminUser) return [] as Token[];
       const response = await apiClient.getTokens();
       return response.data as Token[];
     },
@@ -385,6 +468,11 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
       token.key.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
+
+  // 普通用户视图: 只管理自己的令牌 (列表 + 创建 + 删除)
+  if (!isAdminUser) {
+    return <UserTokensPanel />;
+  }
 
   // List View
   if (view === "list") {

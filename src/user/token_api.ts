@@ -62,6 +62,16 @@ export const MyTokenCreateEndpoint = {
             return c.json({ success: false, error: "Name is required" }, 400);
         }
 
+        // 渠道: 不传则默认绑定全部渠道 (最高权限, 可调用当前用户能用的所有渠道)
+        let channelKeys: string[];
+        const rawChannels = Array.isArray(body.channel_keys) ? body.channel_keys.filter((c: unknown) => typeof c === "string") : null;
+        if (rawChannels && rawChannels.length > 0) {
+            channelKeys = rawChannels;
+        } else {
+            const all = await c.env.DB.prepare(`SELECT key FROM channel_config`).all<{ key: string }>();
+            channelKeys = (all.results || []).map((r) => r.key);
+        }
+
         // 校验用户余额 (除非无限额度)
         const balance = Math.max(0, user.quota - user.used_quota);
         if (totalQuota !== -1 && totalQuota > balance) {
@@ -71,7 +81,7 @@ export const MyTokenCreateEndpoint = {
         const key = `sk-${crypto.randomUUID().replace(/-/g, "").slice(0, 32)}`;
         const value = JSON.stringify({
             name,
-            channel_keys: [],
+            channel_keys: channelKeys,
             total_quota: totalQuota,
             user_id: user.id,
             expires_at: expiresAt,

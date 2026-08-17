@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
+import { useAuthStore } from "@/store/auth";
 import { Channel, PricingBillingMode, PricingConfig, PricingModel, Token } from "@/types";
 import { MultiSelectAutoCompleteInput, type AutoCompleteOption } from "@/components/ui/autocomplete";
 import { Button } from "@/components/ui/button";
@@ -413,6 +414,8 @@ function ChannelBadges({ channels, emptyText }: ChannelBadgesProps) {
 
 export function Pricing() {
   const { t } = useTranslation();
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const isAdminUser = (currentUser?.role ?? 0) >= 10;
   const [editMode, setEditMode] = useState<EditMode>("cards");
   const [jsonValue, setJsonValue] = useState("");
   const [pricingRows, setPricingRows] = useState<PricingRow[]>([]);
@@ -451,24 +454,26 @@ export function Pricing() {
   ], [t]);
 
   const pricingQuery = useQuery({
-    queryKey: ["pricing"],
+    queryKey: ["pricing", isAdminUser],
     queryFn: async () => {
-      const response = await apiClient.getPricing();
+      const response = isAdminUser ? await apiClient.getPricing() : await apiClient.myPricing();
       return normalizePricingConfig(response.data as PricingConfig | undefined);
     },
   });
 
   const channelsQuery = useQuery({
-    queryKey: ["channels", "pricing"],
+    queryKey: ["channels", "pricing", isAdminUser],
     queryFn: async () => {
+      if (!isAdminUser) return [] as Channel[];
       const response = await apiClient.getChannels();
       return response.data as Channel[];
     },
   });
 
   const tokensQuery = useQuery({
-    queryKey: ["tokens", "pricing"],
+    queryKey: ["tokens", "pricing", isAdminUser],
     queryFn: async () => {
+      if (!isAdminUser) return [] as Token[];
       const response = await apiClient.getTokens();
       return response.data as Token[];
     },
@@ -828,18 +833,22 @@ export function Pricing() {
       description={t('pricing.description')}
       actions={
         <div className="flex items-center gap-2">
-          <span className="hidden text-xs text-muted-foreground md:inline">{saveHint}</span>
+          {isAdminUser && <span className="hidden text-xs text-muted-foreground md:inline">{saveHint}</span>}
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
             <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
           </Button>
-          <Button variant="outline" size="sm" onClick={toggleEditMode}>
-            {editMode === "cards" ? <FileJson className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-            <span className="hidden sm:inline ml-1">{editMode === "cards" ? t('common.json') : t('pricing.cards')}</span>
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
-            <Check className="h-4 w-4 mr-1" />
-            {t('common.save')}
-          </Button>
+          {isAdminUser && (
+            <>
+              <Button variant="outline" size="sm" onClick={toggleEditMode}>
+                {editMode === "cards" ? <FileJson className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                <span className="hidden sm:inline ml-1">{editMode === "cards" ? t('common.json') : t('pricing.cards')}</span>
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={saveMutation.isPending}>
+                <Check className="h-4 w-4 mr-1" />
+                {t('common.save')}
+              </Button>
+            </>
+          )}
         </div>
       }
     >

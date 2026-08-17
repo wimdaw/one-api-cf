@@ -139,25 +139,25 @@ function App() {
             <Route
               path="/tokens"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <Tokens />
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/tokens/new"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <Tokens createMode />
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
             <Route
               path="/tokens/edit/:key"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <Tokens editRoute />
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
                         <Route
@@ -187,9 +187,9 @@ function App() {
             <Route
               path="/pricing"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <Pricing />
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
             <Route

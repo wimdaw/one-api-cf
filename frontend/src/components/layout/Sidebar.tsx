@@ -47,8 +47,8 @@ interface NavItem {
 const navItemDefs: NavItem[] = [
   { titleKey: "sidebar.dashboard", href: "/dashboard", icon: BarChart3, group: "overview" },
   { titleKey: "sidebar.channels", href: "/channels", icon: LinkIcon, group: "management", adminOnly: true },
-  { titleKey: "sidebar.tokens", href: "/tokens", icon: Key, group: "management", adminOnly: true },
-  { titleKey: "sidebar.pricing", href: "/pricing", icon: DollarSign, group: "management", adminOnly: true },
+  { titleKey: "sidebar.tokens", href: "/tokens", icon: Key, group: "management" },
+  { titleKey: "sidebar.pricing", href: "/pricing", icon: DollarSign, group: "management" },
   { titleKey: "sidebar.users", href: "/users", icon: Users, group: "management", adminOnly: true },
   { titleKey: "sidebar.redemptions", href: "/redemptions", icon: Ticket, group: "management", adminOnly: true },
   { titleKey: "sidebar.usageLogs", href: "/usage-logs", icon: FileText, group: "tools", adminOnly: true },

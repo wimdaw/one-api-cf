@@ -2,6 +2,18 @@ import { Context } from "hono";
 import { getCurrentUser, requireUser } from "./api";
 import { hashTokenKey } from "../analytics/usage-logger";
 import { MyTokenListEndpoint, MyTokenCreateEndpoint } from "./token_api";
+import { getJsonSetting } from "../utils";
+import { CONSTANTS } from "../constants";
+
+// 我的资料定价 (只读, 普通用户可查看定价, 不可编辑)
+async function myPricing(c: Context<HonoCustomType>) {
+    const user = getCurrentUser(c);
+    if (!user) {
+        return c.json({ success: false, error: "Unauthorized" }, 401);
+    }
+    const pricing = await getJsonSetting<Record<string, any>>(c, CONSTANTS.MODEL_PRICING_KEY);
+    return c.json({ success: true, data: pricing || {} });
+}
 
 // 删除我的令牌
 async function deleteMyToken(c: Context<HonoCustomType>) {
@@ -210,9 +222,11 @@ async function myAnalytics(c: Context<HonoCustomType>) {
     const { queryLocalUsageOverview, queryLocalUsageTrend, queryLocalUsageBreakdown } = await import("../analytics/db-query");
 
     const [overview, trend, breakdown] = await Promise.all([
-        queryLocalUsageOverview(c, range, hashes),
-        queryLocalUsageTrend(c, range, hashes),
-        queryLocalUsageBreakdown(c, range, dimension, hashes),
+        hashes.length === 0
+            ? { requests: 0, successes: 0, total_cost: 0, total_tokens: 0, prompt_tokens: 0, completion_tokens: 0, successRate: 0 }
+            : queryLocalUsageOverview(c, range, hashes),
+        hashes.length === 0 ? [] : queryLocalUsageTrend(c, range, hashes),
+        hashes.length === 0 ? [] : queryLocalUsageBreakdown(c, range, dimension, hashes),
     ]);
 
     return c.json({
@@ -227,6 +241,7 @@ export function registerUserApi(app: any) {
     app.post("/api/user/token", requireUser, MyTokenCreateEndpoint.handler);
     app.delete("/api/user/token/:key", requireUser, deleteMyToken);
     app.get("/api/user/profile", requireUser, myProfile);
+    app.get("/api/user/pricing", requireUser, myPricing);
     app.put("/api/user/profile", requireUser, updateMyProfile);
     app.get("/api/user/usage", requireUser, myUsage);
     app.post("/api/user/redeem", requireUser, redeemCode);

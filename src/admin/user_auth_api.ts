@@ -71,14 +71,20 @@ export const UserRegisterEndpoint = {
              VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`
         ).bind(username, storedHash, display_name, ROLE_USER, STATUS_ENABLED, inviteeQuota, inviterId, affCode).run();
 
-        // 邀请者返利
+        // 邀请者返利 (超级管理员/管理员余额无限, 不参与返利加额度)
         if (inviterId && quotaForInviter > 0) {
-            await c.env.DB.prepare(
-                `UPDATE users
-                 SET quota = CASE WHEN quota = -1 THEN -1 ELSE quota + ? END,
-                     updated_at = datetime('now')
-                 WHERE id = ?`
-            ).bind(quotaForInviter, inviterId).run();
+            const inviterRow = await c.env.DB.prepare(
+                `SELECT role, quota FROM users WHERE id = ?`
+            ).bind(inviterId).first<{ role: number; quota: number }>();
+            const inviterRole = inviterRow?.role ?? ROLE_USER;
+            if (inviterRole < 10 && inviterRow && inviterRow.quota !== -1) {
+                await c.env.DB.prepare(
+                    `UPDATE users
+                     SET quota = quota + ?,
+                         updated_at = datetime('now')
+                     WHERE id = ?`
+                ).bind(quotaForInviter, inviterId).run();
+            }
         }
 
         return c.json({

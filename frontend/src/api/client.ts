@@ -479,11 +479,15 @@ export const apiClient = {
   myTokens: () =>
     request<ApiResponse<{ tokens: MyToken[] }>>('/api/user/token', { method: 'GET' }),
 
-  createMyToken: (data: { name: string; total_quota: number }) =>
+  createMyToken: (data: { name: string; total_quota: number; channel_keys?: string[] }) =>
     request<ApiResponse<MyToken>>('/api/user/token', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // 我的定价 (只读)
+  myPricing: () =>
+    request<ApiResponse<Record<string, unknown>>>('/api/user/pricing', { method: 'GET' }),
 
   deleteMyToken: (key: string) =>
     request<ApiResponse<unknown>>(`/api/user/token/${encodeURIComponent(key)}`, {
