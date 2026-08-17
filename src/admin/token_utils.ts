@@ -178,25 +178,26 @@ export const TokenUtils = {
         // 可传入提前读取的全局定价映射，避免循环内 N+1 查询
         globalPricing: Record<string, ModelPricing> | null | undefined = undefined
     ): Promise<ModelPricing | null> {
-        // 对外名 → 真实模型 id 解析: 若调用用了渠道对外模型名(no-free), 定价键是真实 id(free), 需先匹配
-        const resolveRealId = (m: string): string | undefined => {
+        // 调用模型名 → 渠道模型对外名(name)解析: 定价键按对外名存储,
+        // 用户/管理员用对外名调用, 超管用真实 id 调用时也要解析回 name 查定价
+        const resolveDisplayName = (m: string): string | undefined => {
             for (const cm of channelConfig?.models || []) {
                 if (!cm || typeof cm !== "object") continue;
                 const cmId = String(cm.id ?? "");
                 const cmName = String(cm.name ?? "");
                 if ((cmName && cmName.toLowerCase() === m.toLowerCase())
                     || (cmId && cmId.toLowerCase() === m.toLowerCase())) {
-                    return cmId;
+                    return cmName;
                 }
             }
             return undefined;
         };
 
-        // Check channel-specific pricing first (按对外名和真实 id 各查一次)
-        const realId = resolveRealId(model);
+        // Check channel-specific pricing first (按调用名和对外名各查一次)
+        const displayName = resolveDisplayName(model);
         let channelPricing = findPricingInMap(channelConfig?.model_pricing, model);
-        if (!channelPricing && realId) {
-            channelPricing = findPricingInMap(channelConfig?.model_pricing, realId);
+        if (!channelPricing && displayName) {
+            channelPricing = findPricingInMap(channelConfig?.model_pricing, displayName);
         }
         if (channelPricing) {
             return channelPricing;
@@ -206,8 +207,8 @@ export const TokenUtils = {
         const globalPricingMap = globalPricing
             ?? await getJsonSetting<Record<string, ModelPricing>>(c, CONSTANTS.MODEL_PRICING_KEY);
         let gp = findPricingInMap(globalPricingMap, model);
-        if (!gp && realId) {
-            gp = findPricingInMap(globalPricingMap, realId);
+        if (!gp && displayName) {
+            gp = findPricingInMap(globalPricingMap, displayName);
         }
         return gp;
     },
