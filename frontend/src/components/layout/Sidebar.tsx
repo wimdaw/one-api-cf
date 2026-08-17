@@ -8,6 +8,7 @@ import {
   FileText,
   TestTube2,
   Users,
+  UserRound,
   GitBranch,
   Languages,
   Moon,
@@ -39,17 +40,19 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   group: NavGroup;
+  adminOnly?: boolean;
 }
 
 const navItemDefs: NavItem[] = [
   { titleKey: "sidebar.dashboard", href: "/dashboard", icon: BarChart3, group: "overview" },
-  { titleKey: "sidebar.channels", href: "/channels", icon: LinkIcon, group: "management" },
-  { titleKey: "sidebar.tokens", href: "/tokens", icon: Key, group: "management" },
-  { titleKey: "sidebar.pricing", href: "/pricing", icon: DollarSign, group: "management" },
-  { titleKey: "sidebar.users", href: "/users", icon: Users, group: "management" },
-  { titleKey: "sidebar.usageLogs", href: "/usage-logs", icon: FileText, group: "tools" },
+  { titleKey: "sidebar.channels", href: "/channels", icon: LinkIcon, group: "management", adminOnly: true },
+  { titleKey: "sidebar.tokens", href: "/tokens", icon: Key, group: "management", adminOnly: true },
+  { titleKey: "sidebar.pricing", href: "/pricing", icon: DollarSign, group: "management", adminOnly: true },
+  { titleKey: "sidebar.users", href: "/users", icon: Users, group: "management", adminOnly: true },
+  { titleKey: "sidebar.usageLogs", href: "/usage-logs", icon: FileText, group: "tools", adminOnly: true },
   { titleKey: "sidebar.apiTest", href: "/api-test", icon: TestTube2, group: "tools" },
-  { titleKey: "sidebar.settings", href: "/settings", icon: SlidersHorizontal, group: "system" },
+  { titleKey: "sidebar.account", href: "/account", icon: UserRound, group: "tools" },
+  { titleKey: "sidebar.settings", href: "/settings", icon: SlidersHorizontal, group: "system", adminOnly: true },
 ];
 
 const groupOrder: NavGroup[] = ["overview", "management", "tools", "system"];
@@ -74,7 +77,7 @@ export function Sidebar({
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuthStore();
+  const { logout, currentUser } = useAuthStore();
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined") {
       const savedTheme = localStorage.getItem("theme");
@@ -145,6 +148,7 @@ export function Sidebar({
     );
   };
 
+  const isAdminUser = (currentUser?.role ?? 0) >= 10;
   const groupedNavItems = (() => {
     const groups: Record<NavGroup, NavItem[]> = {
       overview: [],
@@ -153,6 +157,9 @@ export function Sidebar({
       system: [],
     };
     navItemDefs.forEach((item) => {
+      if (item.adminOnly && !isAdminUser) {
+        return;
+      }
       groups[item.group].push(item);
     });
     return groups;

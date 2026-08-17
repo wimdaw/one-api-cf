@@ -86,6 +86,9 @@ export const UserLoginEndpoint = {
                 username: user.username,
                 display_name: user.display_name,
                 role: user.role,
+                status: user.status,
+                quota: user.quota,
+                used_quota: user.used_quota,
                 balance: Math.max(0, user.quota - user.used_quota),
             },
         });

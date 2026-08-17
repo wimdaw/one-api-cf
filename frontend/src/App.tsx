@@ -14,6 +14,7 @@ import { ApiTest } from "./pages/ApiTest";
 import { NotFound } from "./pages/NotFound";
 import { SystemSettings } from "./pages/SystemSettings";
 import { Users } from "./pages/Users";
+import { MyAccount } from "./pages/MyAccount";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -138,11 +139,19 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
+                        <Route
               path="/users"
               element={
                 <ProtectedRoute>
                   <Users />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute>
+                  <MyAccount />
                 </ProtectedRoute>
               }
             />

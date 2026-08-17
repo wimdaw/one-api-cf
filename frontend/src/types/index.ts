@@ -92,6 +92,14 @@ export interface AdminUser {
   created_at: string
 }
 
+export interface MyToken {
+  key: string
+  name: string
+  total_quota: number
+  usage: number
+  created_at: string
+}
+
 export type PricingBillingMode = 'volume' | 'request'
 
 export interface PricingModel {

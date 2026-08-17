@@ -28,16 +28,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null })
 
     try {
-      await apiClient.userLogin(username, password)
+      const response = await apiClient.userLogin(username, password)
+      const loginData = response.data as (UserSelfInfo & { requiresVerification?: boolean })
       clearAdminCredentials()
-      set({ isAuthenticated: true, isLoading: false, showAuthModal: false, error: null })
-      // 尝试拉取当前用户信息 (非关键, 失败不阻断)
-      try {
-        const self = await apiClient.getCurrentUser()
-        set({ currentUser: self.data as UserSelfInfo })
-      } catch {
-        // ignore
-      }
+      set({
+        isAuthenticated: true,
+        isLoading: false,
+        showAuthModal: false,
+        error: null,
+        currentUser: loginData as UserSelfInfo,
+      })
     } catch (error) {
       clearAdminCredentials()
       set({

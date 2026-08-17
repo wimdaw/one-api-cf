@@ -433,6 +433,30 @@ export const apiClient = {
       method: 'DELETE',
     }),
 
+  // 用户自助 API (/api/user/*)
+  myTokens: () =>
+    request<ApiResponse<{ tokens: MyToken[] }>>('/api/user/token', { method: 'GET' }),
+
+  createMyToken: (data: { name: string; total_quota: number }) =>
+    request<ApiResponse<MyToken>>('/api/user/token', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deleteMyToken: (key: string) =>
+    request<ApiResponse<unknown>>(`/api/user/token/${encodeURIComponent(key)}`, {
+      method: 'DELETE',
+    }),
+
+  myUsage: () =>
+    request<ApiResponse<{ quota: number; used_quota: number; balance: number; total_usage: number }>>('/api/user/usage', { method: 'GET' }),
+
+  updateMyProfile: (data: { display_name?: string; password?: string }) =>
+    request<ApiResponse<unknown>>('/api/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   startAdminLogin: (token: string) =>
     request<ApiResponse<AdminLoginResponse>>('/api/admin/auth/login', {
       method: 'POST',

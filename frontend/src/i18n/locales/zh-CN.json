@@ -60,7 +60,8 @@
     "darkMode": "深色",
     "collapse": "收起",
     "logout": "退出登录",
-    "openSidebar": "打开侧边栏"
+    "openSidebar": "打开侧边栏",
+    "account": "个人中心"
   },
   "auth": {
     "title": "登录",
@@ -498,5 +499,29 @@
     "statusEnabled": "正常",
     "statusDisabled": "禁用",
     "toggleRoleTitle": "切换管理员角色"
+  },
+  "account": {
+    "balance": "余额",
+    "username": "用户名",
+    "role": "角色",
+    "roleRoot": "超级管理员",
+    "roleAdmin": "管理员",
+    "roleUser": "普通用户",
+    "myTokens": "我的令牌",
+    "create": "创建令牌",
+    "noTokens": "暂无令牌",
+    "tokenName": "令牌名称",
+    "save": "创建",
+    "copy": "复制",
+    "delete": "删除",
+    "copied": "已复制",
+    "created": "令牌已创建",
+    "deleted": "令牌已删除",
+    "profile": "个人资料",
+    "displayName": "显示名",
+    "newPassword": "新密码",
+    "leaveBlank": "留空则不修改",
+    "saveProfile": "保存资料",
+    "updated": "资料已更新"
   }
 }

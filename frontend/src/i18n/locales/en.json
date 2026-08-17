@@ -60,7 +60,8 @@
     "darkMode": "Dark",
     "collapse": "Collapse",
     "logout": "Logout",
-    "openSidebar": "Open sidebar"
+    "openSidebar": "Open sidebar",
+    "account": "My Account"
   },
   "auth": {
     "title": "Login",
@@ -498,5 +499,29 @@
     "statusEnabled": "Enabled",
     "statusDisabled": "Disabled",
     "toggleRoleTitle": "Toggle admin role"
+  },
+  "account": {
+    "balance": "Balance",
+    "username": "Username",
+    "role": "Role",
+    "roleRoot": "Root",
+    "roleAdmin": "Admin",
+    "roleUser": "User",
+    "myTokens": "My Tokens",
+    "create": "Create Token",
+    "noTokens": "No tokens yet",
+    "tokenName": "Token name",
+    "save": "Create",
+    "copy": "Copy",
+    "delete": "Delete",
+    "copied": "Copied",
+    "created": "Token created",
+    "deleted": "Token deleted",
+    "profile": "Profile",
+    "displayName": "Display Name",
+    "newPassword": "New Password",
+    "leaveBlank": "Leave blank to keep unchanged",
+    "saveProfile": "Save Profile",
+    "updated": "Profile updated"
   }
 }

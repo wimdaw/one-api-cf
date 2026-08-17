@@ -56,7 +56,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     resetAuthDialog()
     setIsMobileNavOpen(false)
     addToast(t('auth.loginSuccess'), 'success')
-    navigate('/dashboard', { replace: true })
+    // 普通用户默认进入个人中心, 管理员进入总览看板
+    const role = useAuthStore.getState().currentUser?.role ?? 0
+    navigate(role >= 10 ? '/dashboard' : '/account', { replace: true })
   }
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
