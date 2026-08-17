@@ -14,6 +14,7 @@ import {
     queryUsageLogRecords,
 } from "../analytics/query";
 import { hashTokenKey } from "../analytics/usage-logger";
+import { getChannelDisplayNameMap } from "../analytics/channel-names";
 
 // 用户排行: 把 token_hash 映射为可读归属 (优先用户名, 系统 token 用令牌名)
 async function mapTokenHashesToUsers(
@@ -192,6 +193,15 @@ export class AnalyticsBreakdownEndpoint extends OpenAPIRoute {
             // 用户排行: 把 token_hash 映射为用户名
             if (c.req.query("dimension") === "user" && result?.items?.length) {
                 result.items = await mapTokenHashesToUsers(c, result.items);
+            }
+
+            // 渠道排行: 把 channel_key 映射为渠道显示名(config.name)
+            if (c.req.query("dimension") === "channel" && result?.items?.length) {
+                const nameMap = await getChannelDisplayNameMap(c);
+                result.items = result.items.map((item) => ({
+                    ...item,
+                    label: nameMap[item.label] || item.label,
+                }));
             }
 
             return {

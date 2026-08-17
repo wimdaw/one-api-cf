@@ -240,6 +240,17 @@ async function myAnalytics(c: Context<HonoCustomType>) {
         hashes.length === 0 ? [] : queryLocalUsageBreakdown(c, range, dimension, hashes),
     ]);
 
+    // 渠道排行: 把 channel_key 映射为渠道显示名(config.name)
+    const breakdownData = breakdown as { items?: Array<{ label: string }> };
+    if (dimension === "channel" && breakdownData?.items?.length) {
+        const { getChannelDisplayNameMap } = await import("../analytics/channel-names");
+        const nameMap = await getChannelDisplayNameMap(c);
+        breakdownData.items = breakdownData.items.map((item) => ({
+            ...item,
+            label: nameMap[item.label] || item.label,
+        }));
+    }
+
     return c.json({
         success: true,
         data: { overview, trend, breakdown },
