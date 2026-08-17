@@ -27,6 +27,7 @@ import {
   Check,
   MoreHorizontal,
   AlertCircle,
+  X,
   Search,
   RotateCcw,
 } from "lucide-react";
@@ -358,6 +359,14 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
     );
   };
 
+  const selectAllChannels = () => {
+    setSelectedChannels([...availableChannels]);
+  };
+
+  const clearAllChannels = () => {
+    setSelectedChannels([]);
+  };
+
   const filteredData = data?.filter((token) => {
     if (!searchQuery) return true;
     const config = typeof token.value === "string" ? JSON.parse(token.value) : token.value;
@@ -429,6 +438,9 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
               {filteredData?.map((token) => {
                 const config = typeof token.value === "string" ? JSON.parse(token.value) : token.value;
                 const channelKeys = config.channel_keys || [];
+                // 覆盖全部渠道判断: channel_keys 为空(全部) 或 勾选数 >= 系统全量渠道数
+                const coversAllChannels = channelKeys.length === 0
+                  || (availableChannels.length > 0 && channelKeys.length >= availableChannels.length);
                 const usedQuota = token.usage || 0;
                 const totalQuota = normalizeTokenQuota(config.total_quota);
                 const availableQuota = isUnlimitedTokenQuota(totalQuota)
@@ -501,7 +513,7 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
                         <span className="text-muted-foreground">
                           {t('tokens.channels')}:{" "}
                           <span className="text-foreground">
-                            {channelKeys.length === 0 ? t('tokens.channelsAll') : t('tokens.channelsCount', { count: channelKeys.length })}
+                            {coversAllChannels ? t('tokens.channelsAll') : t('tokens.channelsCount', { count: channelKeys.length })}
                           </span>
                         </span>
                         <span className="text-muted-foreground">
@@ -694,11 +706,23 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
                     <div>
                       <h3 className="font-medium">{t('tokens.channelAccess')}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {selectedChannels.length === 0
+                        {selectedChannels.length === 0 || (availableChannels.length > 0 && selectedChannels.length >= availableChannels.length)
                           ? t('tokens.channelAccessAll')
                           : t('tokens.channelAccessSelected', { count: selectedChannels.length })}
                       </p>
                     </div>
+                    {availableChannels.length > 0 && (
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={selectAllChannels}>
+                          <Check className="h-3.5 w-3.5 mr-1" />
+                          {t('tokens.selectAll')}
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={clearAllChannels}>
+                          <X className="h-3.5 w-3.5 mr-1" />
+                          {t('tokens.clearAll')}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   {availableChannels.length === 0 ? (
                     <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">

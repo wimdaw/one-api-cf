@@ -245,7 +245,9 @@
     "usedAvailable": "Used/Available",
     "resetQuota": "Reset Usage",
     "expiry": "Expires at",
-    "expiryHint": "Leave empty for no expiry; token auto-disables after expiry"
+    "expiryHint": "Leave empty for no expiry; token auto-disables after expiry",
+    "selectAll": "Select all",
+    "clearAll": "Clear"
   },
   "pricing": {
     "title": "Pricing",
