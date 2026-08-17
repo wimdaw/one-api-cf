@@ -33,6 +33,28 @@ export const legacyBillingAmountToRaw = (value: unknown): number => {
     return normalizeRawBillingAmount(toFiniteNumber(value) * LEGACY_TO_RAW_FACTOR);
 };
 
+// 美元 → raw 内部单位 ($1 = 1e9 raw)
+export const dollarsToRaw = (value: unknown): number => {
+    return normalizeRawBillingAmount(toFiniteNumber(value) * BILLING_RAW_SCALE);
+};
+
+// raw 内部单位 → 美元
+export const rawToDollars = (value: unknown): number => {
+    const raw = toFiniteNumber(value);
+    if (!Number.isFinite(raw)) return 0;
+    const dollars = raw / BILLING_RAW_SCALE;
+    return Math.round(dollars * 1_000_000) / 1_000_000;
+};
+
+// raw 内部单位 → legacy 美元显示单位 (1e6 scale, $1 = 1_000_000 legacy)
+export const rawBillingAmountToLegacy = (value: unknown): number => {
+    const raw = toFiniteNumber(value);
+    if (!Number.isFinite(raw)) return 0;
+    const legacy = raw / LEGACY_TO_RAW_FACTOR;
+    // 保留合理精度, 避免浮点尾巴 (最多 6 位小数)
+    return Math.round(legacy * 1_000_000) / 1_000_000;
+};
+
 export const calculateTokenRateCostRaw = (tokens: unknown, rate: unknown): number => {
     return normalizeRawBillingAmount(toFiniteNumber(tokens) * toFiniteNumber(rate) * LEGACY_TO_RAW_FACTOR);
 };

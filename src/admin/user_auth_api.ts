@@ -16,6 +16,7 @@ import {
     clearAdminSessionCookie,
 } from "./auth_shared";
 import { getSystemConfig } from "../system-config";
+import { dollarsToRaw, rawToDollars } from "../billing";
 
 // 用户注册/登录 API (one-api 移植, 保持现有风格)
 
@@ -64,6 +65,8 @@ export const UserRegisterEndpoint = {
         const storedHash = `${salt}:${hash}`;
         const affCode = generateAffCode();
 
+        // invite_code.quota 已是 raw 内部值 (创建时 dollarsToRaw 转过)
+        // 直接存库, 不要再次 dollarsToRaw (否则双重转换)
         const result = await c.env.DB.prepare(
             `INSERT INTO users (username, password_hash, display_name, email, role, status, quota, used_quota, aff_code)
              VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`
@@ -82,7 +85,7 @@ export const UserRegisterEndpoint = {
             data: {
                 changes: result.meta?.changes,
                 aff_code: affCode,
-                quota: inviteeQuota,
+                quota: rawToDollars(inviteeQuota),
             },
         });
     },
@@ -124,11 +127,12 @@ export const UserLoginEndpoint = {
                 id: user.id,
                 username: user.username,
                 display_name: user.display_name,
+                email: user.email || "",
                 role: user.role,
                 status: user.status,
-                quota: user.quota,
-                used_quota: user.used_quota,
-                balance: user.quota === -1 ? -1 : Math.max(0, user.quota - user.used_quota),
+                quota: user.quota === -1 ? -1 : rawToDollars(user.quota),
+                used_quota: user.quota === -1 ? rawToDollars(user.used_quota) : rawToDollars(user.used_quota),
+                balance: user.quota === -1 ? -1 : Math.max(0, rawToDollars(user.quota - user.used_quota)),
             },
         });
     },

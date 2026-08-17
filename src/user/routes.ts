@@ -5,7 +5,7 @@ import { MyTokenListEndpoint, MyTokenCreateEndpoint } from "./token_api";
 import { getJsonSetting } from "../utils";
 import { CONSTANTS } from "../constants";
 import { getSystemConfig } from "../system-config";
-import { normalizeBillingConfig } from "../billing";
+import { normalizeBillingConfig, rawToDollars, dollarsToRaw } from "../billing";
 
 // 我的计费展示配置 (只读, 普通用户可读, 用于显示金额单位)
 async function myBilling(c: Context<HonoCustomType>) {
@@ -64,9 +64,9 @@ async function myProfile(c: Context<HonoCustomType>) {
             username: user.username,
             display_name: user.display_name,
             role: user.role,
-            quota: user.quota,
-            used_quota: user.used_quota,
-            balance: user.quota === -1 ? -1 : Math.max(0, user.quota - user.used_quota),
+            quota: user.quota === -1 ? -1 : rawToDollars(user.quota),
+            used_quota: user.quota === -1 ? rawToDollars(user.used_quota) : rawToDollars(user.used_quota),
+            balance: user.quota === -1 ? -1 : Math.max(0, rawToDollars(user.quota - user.used_quota)),
             aff_code: user.aff_code || "",
             inviter_id: user.inviter_id,
         },
@@ -98,10 +98,10 @@ async function myUsage(c: Context<HonoCustomType>) {
     return c.json({
         success: true,
         data: {
-            quota: user.quota,
-            used_quota: user.used_quota,
-            balance: user.quota === -1 ? -1 : Math.max(0, user.quota - user.used_quota),
-            total_usage: totalUsage,
+            quota: user.quota === -1 ? -1 : rawToDollars(user.quota),
+            used_quota: user.quota === -1 ? rawToDollars(user.used_quota) : rawToDollars(user.used_quota),
+            balance: user.quota === -1 ? -1 : Math.max(0, rawToDollars(user.quota - user.used_quota)),
+            total_usage: rawToDollars(totalUsage),
             tokens: perToken,
         },
     });
@@ -184,9 +184,9 @@ async function redeemCode(c: Context<HonoCustomType>) {
         `SELECT quota FROM users WHERE id = ?`
     ).bind(user.id).first<{ quota: number }>();
     const currentQuota = row?.quota ?? user.quota;
-    const addedQuota = Number(redemption.quota) || 0;
-    // 余额逐次累加: quota += 兑换额度
-    const newQuota = currentQuota === -1 ? -1 : (currentQuota || 0) + addedQuota;
+    // redemption.quota 为美元, 转 raw 后逐次累加
+    const addedQuotaRaw = dollarsToRaw(Number(redemption.quota) || 0);
+    const newQuota = currentQuota === -1 ? -1 : (currentQuota || 0) + addedQuotaRaw;
 
     await c.env.DB.prepare(
         `UPDATE users SET quota = ?, updated_at = datetime('now') WHERE id = ?`
@@ -200,7 +200,7 @@ async function redeemCode(c: Context<HonoCustomType>) {
 
     return c.json({
         success: true,
-        data: { added_quota: addedQuota, new_quota: newQuota },
+        data: { added_quota: rawToDollars(addedQuotaRaw), new_quota: newQuota === -1 ? -1 : rawToDollars(newQuota) },
     });
 }
 

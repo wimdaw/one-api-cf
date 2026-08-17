@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { dollarsToRaw } from "../billing";
 
 // 邀请码管理 API
 // 后台生成邀请码; 用户注册时填写邀请码校验, 并获赠注册额度
@@ -17,6 +18,7 @@ export const InviteCodeCreateEndpoint = {
     handler: async (c: Context<HonoCustomType>) => {
         const body = await c.req.json().catch(() => ({}));
         const quota = Number(body.quota) || 0;
+        const quotaRaw = dollarsToRaw(quota);
         const count = Math.min(Math.max(Number(body.count) || 1, 1), 100);
 
         if (quota <= 0) {
@@ -29,7 +31,7 @@ export const InviteCodeCreateEndpoint = {
             await c.env.DB.prepare(
                 `INSERT INTO invite_code (code, quota, count, used_count, status)
                  VALUES (?, ?, 1, 0, 1)`
-            ).bind(code, quota).run();
+            ).bind(code, quotaRaw).run();
             codes.push(code);
         }
 

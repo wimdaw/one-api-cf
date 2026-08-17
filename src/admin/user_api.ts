@@ -10,6 +10,7 @@ import {
     STATUS_ENABLED,
     type UserRow,
 } from "../user/auth";
+import { dollarsToRaw, rawToDollars } from "../billing";
 
 // ---------------------------------------------------------------------------
 // 用户管理 API (one-api 移植, 保持 chanfana 端点风格)
@@ -28,10 +29,19 @@ export const UserListEndpoint = {
         const now = await c.env.DB.prepare(
             "SELECT id, username, email, display_name, role, status, quota, used_quota, inviter_id, aff_code, created_at FROM users ORDER BY id ASC"
         ).all();
-        const users = (now.results || []).map((row: any) => ({
-            ...row,
-            balance: Number(row.quota) === -1 ? -1 : Math.max(0, Number(row.quota || 0) - Number(row.used_quota || 0)),
-        }));
+        const users = (now.results || []).map((row: any) => {
+            const quotaRaw = Number(row.quota);
+            const usedRaw = Number(row.used_quota || 0);
+            // -1 = 无限额度, 对外返回 -1; 否则 raw 转美元
+            const quota = quotaRaw === -1 ? -1 : rawToDollars(quotaRaw);
+            const used_quota = quotaRaw === -1 ? rawToDollars(usedRaw) : rawToDollars(usedRaw);
+            return {
+                ...row,
+                quota,
+                used_quota,
+                balance: quotaRaw === -1 ? -1 : Math.max(0, rawToDollars(quotaRaw - usedRaw)),
+            };
+        });
         return c.json({ success: true, data: { users } });
     },
 };
@@ -65,10 +75,12 @@ export const UserCreateEndpoint = {
         const { hash, salt } = await hashPassword(password);
         const storedHash = `${salt}:${hash}`;
         const affCode = generateAffCode();
+        // quota 为美元输入, 存库转为 raw 内部单位
+        const quotaRaw = dollarsToRaw(quota);
         const result = await c.env.DB.prepare(
             `INSERT INTO users (username, password_hash, display_name, email, role, status, quota, used_quota, aff_code)
              VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)`
-        ).bind(username, storedHash, display_name, email, ROLE_USER, STATUS_ENABLED, quota, affCode).run();
+        ).bind(username, storedHash, display_name, email, ROLE_USER, STATUS_ENABLED, quotaRaw, affCode).run();
 
         return c.json({ success: true, data: { changes: result.meta?.changes } });
     },
@@ -113,7 +125,7 @@ export const UserUpdateEndpoint = {
         if (data.email !== undefined) { sets.push("email = ?"); params.push(data.email); }
         if (data.role !== undefined) { sets.push("role = ?"); params.push(data.role); }
         if (data.status !== undefined) { sets.push("status = ?"); params.push(data.status); }
-        if (data.quota !== undefined) { sets.push("quota = ?"); params.push(data.quota); }
+        if (data.quota !== undefined) { sets.push("quota = ?"); params.push(dollarsToRaw(data.quota)); }
         if (data.password !== undefined) {
             const { hash, salt } = await hashPassword(data.password);
             sets.push("password_hash = ?"); params.push(`${salt}:${hash}`);

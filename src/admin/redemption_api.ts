@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { dollarsToRaw } from "../billing";
 
 // 兑换码管理 API (one-api 移植)
 // 管理员生成兑换码; 用户在个人中心输入兑换码充值额度
@@ -8,6 +9,7 @@ export const RedemptionCreateEndpoint = {
     handler: async (c: Context<HonoCustomType>) => {
         const body = await c.req.json().catch(() => ({}));
         const quota = Number(body.quota) || 0;
+        const quotaRaw = dollarsToRaw(quota);
         const count = Math.min(Math.max(Number(body.count) || 1, 1), 100);
         const name = String(body.name || "").trim();
 
@@ -21,7 +23,7 @@ export const RedemptionCreateEndpoint = {
             await c.env.DB.prepare(
                 `INSERT INTO redemption (code, quota, count, redeemed_count, status)
                  VALUES (?, ?, 1, 0, 1)`
-            ).bind(code, quota).run();
+            ).bind(code, quotaRaw).run();
             codes.push(code);
         }
 

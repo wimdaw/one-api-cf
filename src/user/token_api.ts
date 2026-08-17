@@ -1,6 +1,7 @@
 import { Context } from "hono";
 import { TokenUtils } from "../admin/token_utils";
 import { getCurrentUser } from "./api";
+import { dollarsToRaw, rawToDollars } from "../billing";
 
 // 用户自助令牌 API (one-api 移植: 用户管理自己的 API Key)
 
@@ -27,8 +28,8 @@ export const MyTokenListEndpoint = {
             return {
                 key: row.key,
                 name: data.name,
-                total_quota: data.total_quota,
-                usage: row.usage,
+                total_quota: data.total_quota === -1 ? -1 : rawToDollars(data.total_quota),
+                usage: rawToDollars(row.usage || 0),
                 created_at: row.created_at,
             };
         });
@@ -45,7 +46,8 @@ export const MyTokenCreateEndpoint = {
         }
         const body = await c.req.json().catch(() => ({}));
         const name = String(body.name || "").trim();
-        const totalQuota = body.total_quota === -1 ? -1 : Number(body.total_quota) || 0;
+        // total_quota 美元输入转为 raw (-1 无限保留)
+        const totalQuota = body.total_quota === -1 ? -1 : dollarsToRaw(body.total_quota);
         // 可选有效期 (ms 时间戳), 校验为未来时间
         let expiresAt: number | undefined;
         const rawExpiry = Number(body.expires_at);
@@ -92,6 +94,6 @@ export const MyTokenCreateEndpoint = {
             `INSERT INTO api_token (key, value, usage) VALUES (?, ?, 0)`
         ).bind(key, value).run();
 
-        return c.json({ success: true, data: { key, name, total_quota: totalQuota } });
+        return c.json({ success: true, data: { key, name, total_quota: totalQuota === -1 ? -1 : rawToDollars(totalQuota) } });
     },
 };

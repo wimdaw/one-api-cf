@@ -45,6 +45,66 @@ async function ensureAdminSessionUserIdColumn(c: Context<HonoCustomType>): Promi
   }
 }
 
+// 美元计费迁移: 把线上已有的 raw 内部值转成美元单位 (只跑一次)
+async function migrateBillingToDollars(c: Context<HonoCustomType>): Promise<void> {
+    const alreadyDone = await getSetting(c, "BILLING_DOLLAR_MIGRATED");
+    if (alreadyDone === "1") return;
+    const DB = c.env.DB;
+    const SCALE = 1e9;
+    const round = (v: number) => Math.round(v * 1e6) / 1e6; // 美元保留 6 位
+    try {
+        // users: quota (-1=无限跳过) + used_quota
+        const users = await DB.prepare("SELECT id, quota, used_quota FROM users").all<{ id: number; quota: number; used_quota: number }>();
+        for (const u of users.results || []) {
+            const q = Number(u.quota);
+            const used = Number(u.used_quota || 0);
+            const newQ = q === -1 ? -1 : round(q / SCALE);
+            const newU = round(used / SCALE);
+            if (newQ !== q || newU !== used) {
+                await DB.prepare("UPDATE users SET quota = ?, used_quota = ? WHERE id = ?").bind(newQ, newU, u.id).run();
+            }
+        }
+        // api_token: usage (纯数字列) + value JSON 里的 total_quota
+        const tokens = await DB.prepare("SELECT key, value, usage FROM api_token").all<{ key: string; value: string; usage: number }>();
+        for (const t of tokens.results || []) {
+            const usage = Number(t.usage || 0);
+            const newUsage = round(usage / SCALE);
+            let valueChanged = false;
+            let parsed: any;
+            try { parsed = JSON.parse(t.value || "{}"); } catch { continue; }
+            if (typeof parsed.total_quota === "number" && parsed.total_quota !== -1) {
+                parsed.total_quota = round(parsed.total_quota / SCALE);
+                valueChanged = true;
+            }
+            if (newUsage !== usage) {
+                await DB.prepare("UPDATE api_token SET usage = ?, value = ? WHERE key = ?").bind(newUsage, valueChanged ? JSON.stringify(parsed) : t.value, t.key).run();
+            } else if (valueChanged) {
+                await DB.prepare("UPDATE api_token SET value = ? WHERE key = ?").bind(JSON.stringify(parsed), t.key).run();
+            }
+        }
+        // invite_code: quota
+        const invites = await DB.prepare("SELECT id, quota FROM invite_code WHERE quota > 0").all<{ id: number; quota: number }>();
+        for (const inv of invites.results || []) {
+            const newQ = round(inv.quota / SCALE);
+            if (newQ !== inv.quota) {
+                await DB.prepare("UPDATE invite_code SET quota = ? WHERE id = ?").bind(newQ, inv.id).run();
+            }
+        }
+        // redemption: quota
+        const codes = await DB.prepare("SELECT id, quota FROM redemption WHERE quota > 0").all<{ id: number; quota: number }>();
+        for (const c2 of codes.results || []) {
+            const newQ = round(c2.quota / SCALE);
+            if (newQ !== c2.quota) {
+                await DB.prepare("UPDATE redemption SET quota = ? WHERE id = ?").bind(newQ, c2.id).run();
+            }
+        }
+        await saveSetting(c, "BILLING_DOLLAR_MIGRATED", "1");
+        console.log("[migrate] Billing values converted from raw to dollar units");
+    } catch (err) {
+        console.error("[migrate] Billing migration failed:", err);
+    }
+}
+
 // Seed 默认管理员账号: 首次部署自动创建 (用户名/密码来自环境变量)
 //   ADMIN_USERNAME: 默认管理员用户名 (默认 "admin")
 //   ADMIN_PASSWORD: 默认管理员密码 (默认取 ADMIN_TOKEN, 再回退 "admin")
@@ -432,6 +492,9 @@ const dbOperations = {
 
         // 列迁移: 给 users 表补 email 列 (邮箱注册/找回/验证)
         await ensureUsersEmailColumn(c);
+
+        // 美元计费迁移: 把 raw 内部值转为美元单位 (只跑一次, 幂等)
+        await migrateBillingToDollars(c);
 
         // Seed 默认免费渠道(OpenCode + Kilo Gateway)与默认管理员账号。
         // 移动到 version 检查之前: 老库(version 已最新)也能补齐种子 (均幂等)。

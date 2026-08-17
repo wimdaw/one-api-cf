@@ -20,6 +20,7 @@ export type UserRow = {
     username: string;
     password_hash: string;
     display_name: string;
+    email?: string;
     role: number;
     status: number;
     quota: number;

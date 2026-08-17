@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { CommonErrorResponse, CommonSuccessfulResponse } from "../model";
 import { TokenUtils } from "./token_utils";
+import { dollarsToRaw, rawToDollars } from "../billing";
 
 // Token 列表 API
 export class TokenListEndpoint extends OpenAPIRoute {
@@ -88,7 +89,8 @@ export class TokenUpsertEndpoint extends OpenAPIRoute {
         const normalizedBody: ApiTokenData = {
             ...body,
             user_id: ownerId,
-            total_quota: TokenUtils.normalizeQuota(body.total_quota),
+            // total_quota 美元输入转为 raw (-1 无限保留)
+            total_quota: body.total_quota === -1 ? -1 : TokenUtils.normalizeQuota(dollarsToRaw(body.total_quota)),
         };
 
         // Validate channels exist using batch query (if channel_keys is not empty)
