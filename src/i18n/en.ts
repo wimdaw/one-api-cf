@@ -17,8 +17,6 @@ const en: Record<string, string> = {
     "analytics.startTime": "Start time",
     "analytics.endTime": "End time",
     "analytics.startBeforeEnd": "Start time must be earlier than end time",
-    "analytics.schemaV1Warning": "The current Analytics Engine dataset does not contain basic usage log fields, which usually means it is old, empty, or not a usage log dataset written by the current version.",
-    "analytics.schemaV2Warning": "The current Analytics Engine dataset is still using the legacy log schema. Fields such as request id / trace id / IP / UA / geolocation / error summary require the new data columns to be available before they can be queried.",
 };
 
 export default en;

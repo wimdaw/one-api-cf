@@ -9,11 +9,6 @@ type AnalyticsEngineDataPoint = {
     indexes?: string[];
 }
 
-interface AnalyticsEngineDataset {
-    writeDataPoint: (point: AnalyticsEngineDataPoint) => void;
-    writeDataPoints?: (points: AnalyticsEngineDataPoint[]) => void;
-}
-
 type CloudflareBindings = {
     DB: D1Database;
     ASSETS: Fetcher;
@@ -23,8 +18,6 @@ type CloudflareBindings = {
     CF_API_TOKEN?: string;
     CF_ACCOUNT_ID?: string;
     FRONTEND_DEV_SERVER_URL?: string;
-    USAGE_ANALYTICS?: AnalyticsEngineDataset;
-    USAGE_ANALYTICS_DATASET?: string;
     DISABLE_ANALYTICS_QUERIES?: string;
     // 管理端 API 允许的跨域来源（逗号分隔），未设置时仅允许同源访问
     ADMIN_CORS_ORIGINS?: string;

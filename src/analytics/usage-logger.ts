@@ -1,8 +1,6 @@
 import { Context } from "hono";
 import { BILLING_RAW_SCALE } from "../billing";
 
-export const DEFAULT_USAGE_ANALYTICS_DATASET_NAME = "usage_events_by_token";
-
 export type UsageLogContext = {
     routeId: string;
     tokenHash: string;
@@ -67,35 +65,10 @@ const getStatusFamily = (status?: number): string => {
     return `${Math.floor(status / 100)}xx`;
 };
 
-const getDatasetName = (c: Context<HonoCustomType>): string => {
-    return c.env.USAGE_ANALYTICS_DATASET || DEFAULT_USAGE_ANALYTICS_DATASET_NAME;
-};
-
-const getAnalyticsBinding = (c: Context<HonoCustomType>): AnalyticsEngineDataset | null => {
-    if (!c.env.USAGE_ANALYTICS || !getDatasetName(c)) {
-        return null;
-    }
-
-    return c.env.USAGE_ANALYTICS;
-};
-
-// 统一数据库分析模式: 只要存在 DB (D1 或本地 SQLite/MySQL/PG), 用量记录就写入 usage_record 表。
-// 不再依赖 Cloudflare Analytics Engine (CF Worker/Pages 部署同样使用 D1 作为分析数据源)。
-export const isLocalDbAnalyticsMode = (c: Context<HonoCustomType>): boolean => {
-    if (!c.env.DB || typeof (c.env.DB as any).prepare !== "function") {
-        return false;
-    }
-
-    return true;
-};
-
 const writeLocalDbDataPoint = (
     c: Context<HonoCustomType>,
     point: AnalyticsEngineDataPoint
 ): void => {
-    if (!isLocalDbAnalyticsMode(c)) {
-        return;
-    }
 
     const blobs = point.blobs || [];
     const doubles = point.doubles || [];
@@ -174,22 +147,8 @@ const writeDataPoint = (
     c: Context<HonoCustomType>,
     point: AnalyticsEngineDataPoint
 ) => {
-    // 本地数据库模式优先
-    if (isLocalDbAnalyticsMode(c)) {
-        writeLocalDbDataPoint(c, point);
-        return;
-    }
-
-    const binding = getAnalyticsBinding(c);
-    if (!binding) {
-        return;
-    }
-
-    try {
-        binding.writeDataPoint(point);
-    } catch (error) {
-        console.error("Failed to write usage analytics datapoint:", error);
-    }
+    // 统一写入本地数据库 (D1/SQLite)。Analytics Engine 已移除。
+    writeLocalDbDataPoint(c, point);
 };
 
 const extractSummaryFromUnknown = (value: unknown): string => {

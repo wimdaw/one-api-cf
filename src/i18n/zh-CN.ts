@@ -17,8 +17,6 @@ const zhCN: Record<string, string> = {
     "analytics.startTime": "开始时间",
     "analytics.endTime": "结束时间",
     "analytics.startBeforeEnd": "开始时间必须早于结束时间",
-    "analytics.schemaV1Warning": "当前 Analytics Engine dataset 不包含使用日志基础字段，通常说明它是旧的、空的，或并非当前版本写入的 usage log dataset。",
-    "analytics.schemaV2Warning": "当前 Analytics Engine dataset 仍是旧日志 schema，request id / trace id / IP / UA / 地理位置 / 错误摘要 等新字段需要新版数据列可用后才可查询。",
 };
 
 export default zhCN;

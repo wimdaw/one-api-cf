@@ -17,8 +17,6 @@ const zhTW: Record<string, string> = {
     "analytics.startTime": "開始時間",
     "analytics.endTime": "結束時間",
     "analytics.startBeforeEnd": "開始時間必須早於結束時間",
-    "analytics.schemaV1Warning": "目前 Analytics Engine dataset 不包含使用日誌基礎欄位，通常表示它是舊的、空的，或並非目前版本寫入的 usage log dataset。",
-    "analytics.schemaV2Warning": "目前 Analytics Engine dataset 仍是舊日誌 schema，request id / trace id / IP / UA / 地理位置 / 錯誤摘要 等新欄位需要新版資料列可用後才可查詢。",
 };
 
 export default zhTW;

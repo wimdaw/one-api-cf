@@ -3,7 +3,6 @@
 // 在不改动 Cloudflare Worker 代码的前提下, 用 fake env 注入:
 //   - DB: 数据库适配层 (sqlite/mysql/postgres, 默认 sqlite)
 //   - ASSETS: 本地静态文件服务 (public/)
-//   - USAGE_ANALYTICS: 无 binding 时跳过 (analytics 自动降级)
 // 用法:
 //   DB_DRIVER=sqlite|mysql|postgres node dist/node-entry.js
 // ---------------------------------------------------------------------------
@@ -79,14 +78,6 @@ const MIME_TYPES: Record<string, string> = {
     ".map": "application/json",
 }
 
-// ---------- Analytics 降级 (写入内存/忽略) ----------
-// CF Analytics Engine 在 Node 中不可用, 提供 noop 以优雅降级
-const noopAnalytics = {
-    writeDataPoint() {
-        // no-op: Docker 模式下用量分析默认关闭
-    },
-}
-
 // ---------- 启动 ----------
 async function main() {
     // 配置 sql.js wasm 路径(sqlite 驱动需要)
@@ -103,8 +94,6 @@ async function main() {
     const env: any = {
         DB: db,
         ASSETS: new NodeAssets(path.join(ROOT_DIR, "public")),
-        USAGE_ANALYTICS: undefined, // 触发 usage-logger 优雅降级
-        USAGE_ANALYTICS_DATASET: process.env.USAGE_ANALYTICS_DATASET || "usage_events_by_token",
         ADMIN_TOKEN: process.env.ADMIN_TOKEN || "admin",
         ADMIN_USERNAME: process.env.ADMIN_USERNAME || "",
         ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "",

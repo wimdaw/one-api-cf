@@ -1,6 +1,5 @@
 import { Context } from "hono";
 
-import { isLocalDbAnalyticsMode } from "./usage-logger";
 import type { D1Like } from "../storage/sqlite";
 
 // env.DB 在不同环境下类型为 D1Database 或 D1Like, 统一转 D1Like
@@ -124,9 +123,6 @@ export const queryLocalUsageOverview = async (
     requestedRange?: string,
     tokenHashes?: string[]
 ) => {
-    if (!isLocalDbAnalyticsMode(c)) {
-        return { range: "24h", totals: { requests: 0, successes: 0, failures: 0, successRate: 0, totalCost: 0, totalTokens: 0, promptTokens: 0, completionTokens: 0, avgLatencyMs: 0 } };
-    }
     const range = getRange(requestedRange);
     const startSec = buildRangeStartSeconds(range);
     const tokenFilter = buildTokenFilter(tokenHashes);
@@ -167,10 +163,6 @@ export const queryLocalUsageTrend = async (
     requestedRange?: string,
     tokenHashes?: string[]
 ) => {
-    if (!isLocalDbAnalyticsMode(c)) {
-        const range = getRange(requestedRange);
-        return { range, bucket: "1h", points: buildBucketTimestamps(range).map((ts) => ({ timestamp: new Date(ts * 1000).toISOString(), requests: 0, successes: 0, failures: 0, successRate: 0, totalCost: 0 })) };
-    }
     const range = getRange(requestedRange);
     const bucketSize = RANGE_BUCKET_SECONDS[range];
     const bucketTimestamps = buildBucketTimestamps(range);
@@ -221,9 +213,6 @@ export const queryLocalUsageBreakdown = async (
     const range = getRange(requestedRange);
     const dimension = (requestedDimension && requestedDimension in BREAKDOWN_COLUMNS
         ? requestedDimension : "token") as AnalyticsBreakdownDimension;
-    if (!isLocalDbAnalyticsMode(c)) {
-        return { range, dimension, items: [] };
-    }
     const startSec = buildRangeStartSeconds(range);
     const column = BREAKDOWN_COLUMNS[dimension];
     const tokenFilter = buildTokenFilter(tokenHashes);
@@ -299,9 +288,6 @@ export const queryLocalUsageEvents = async (
     requestedLimit?: string
 ) => {
     const range = getRange(requestedRange);
-    if (!isLocalDbAnalyticsMode(c)) {
-        return { range, sampled: true, compatibilityWarning: undefined, items: [] };
-    }
     const startSec = buildRangeStartSeconds(range);
     const limit = Math.min(Math.max(Number(requestedLimit || 40) || 40, 1), 100);
     const db = getDb(c);
@@ -346,9 +332,6 @@ export const queryLocalUsageLogRecords = async (
         compatibilityWarning: undefined,
     };
 
-    if (!isLocalDbAnalyticsMode(c)) {
-        return { ...baseResponse, page: 1, pageSize: USAGE_LOG_PAGE_SIZE, total: 0, totalPages: 0, count: 0, hasPrevPage: false, hasNextPage: false, items: [] };
-    }
 
     const db = getDb(c);
 
