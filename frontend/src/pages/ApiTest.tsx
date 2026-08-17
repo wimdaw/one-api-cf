@@ -252,9 +252,9 @@ function MessageContent({ content, endpoint, isUser }: { content: string; endpoi
     return <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{content}</div>
   }
 
-  // 多行内容: 逐行识别媒体
+  // 多行内容: 逐行识别媒体 (http/https/blob/data URL)
   const lines = content.split('\n').filter(Boolean)
-  const mediaLines = lines.filter((line) => /^https?:\/\/.+/.test(line) || line.startsWith('data:image/'))
+  const mediaLines = lines.filter((line) => /^(https?:\/\/|blob:|data:)/.test(line.trim()))
   const textLines = lines.filter((line) => !mediaLines.includes(line))
 
   const isImageEndpoint = endpoint === '/v1/images/generations' || endpoint === '/v1/images/edits'
@@ -271,7 +271,7 @@ function MessageContent({ content, endpoint, isUser }: { content: string; endpoi
                 <img src={line} alt={`generated-${index}`} className="max-w-[280px] rounded-lg border" />
               ) : isVideoEndpoint ? (
                 <video src={line} controls className="max-w-[320px] rounded-lg border" />
-              ) : isAudioEndpoint ? (
+              ) : isAudioEndpoint || line.startsWith('blob:') ? (
                 <audio src={line} controls className="max-w-[280px]" />
               ) : (
                 <a href={line} target="_blank" rel="noreferrer" className="text-sm text-primary underline break-all">{line}</a>
