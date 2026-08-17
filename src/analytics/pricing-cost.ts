@@ -104,16 +104,16 @@ export const matchPricing = (
     if (pricingMap[model]) return pricingMap[model];
 
     const lower = model.toLowerCase();
-    // 尝试去 :free / -free 后缀
-    const stripped = lower.replace(/:free$/, "").replace(/-free$/, "");
+    // 尝试去 :free / -free / /free 后缀
+    const stripped = lower.replace(/:free$/, "").replace(/-free$/, "").replace(/\/free$/, "");
     for (const key of Object.keys(pricingMap)) {
         if (key.toLowerCase() === stripped) return pricingMap[key];
     }
     // 反向: 模型名无 free 但定价键带 free(搜索含 free 的键与 stripped 相同)
-    for (const key of Object.keys(pricingMap)) {
-        const keyStripped = key.toLowerCase().replace(/:free$/, "").replace(/-free$/, "");
-        if (keyStripped === lower || keyStripped === stripped) return pricingMap[key];
-    }
+        for (const key of Object.keys(pricingMap)) {
+            const keyStripped = key.toLowerCase().replace(/:free$/, "").replace(/-free$/, "").replace(/\/free$/, "");
+            if (keyStripped === lower || keyStripped === stripped) return pricingMap[key];
+        }
     return undefined;
 };
 
