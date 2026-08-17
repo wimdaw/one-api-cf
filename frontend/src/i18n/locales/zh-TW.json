@@ -241,7 +241,8 @@
     "usedAvailable": "已用/可用",
     "resetQuota": "重設配額",
     "myTokens": "我的令牌",
-    "allTokens": "所有令牌"
+    "allTokens": "所有令牌",
+    "channelsNone": "不可調用"
   },
   "pricing": {
     "title": "定價管理",

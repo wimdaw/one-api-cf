@@ -123,8 +123,9 @@ export const getChannelsForToken = (tokenKey: string, tokens: Token[], channels:
   const tokenConfig = parseTokenConfig(matchedToken)
   const allowedChannelKeys = tokenConfig.channel_keys || []
 
+  // 空数组 = 未绑定任何渠道 (0渠道, 无调用权限); 有 key 则按 key 过滤
   return allowedChannelKeys.length === 0
-    ? channels
+    ? []
     : channels.filter((channel) => allowedChannelKeys.includes(channel.key))
 }
 

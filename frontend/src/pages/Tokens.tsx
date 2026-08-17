@@ -452,11 +452,10 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
               {filteredData?.map((token) => {
                 const config = typeof token.value === "string" ? JSON.parse(token.value) : token.value;
                 const channelKeys = config.channel_keys || [];
-                // 覆盖全部渠道判断: channel_keys 为空(全部) 或 选中的 key 与全部渠道 key 完全一致
-                const coversAllChannels = channelKeys.length === 0
-                  || (availableChannels.length > 0
-                    && channelKeys.length >= availableChannels.length
-                    && channelKeys.every((k: string) => availableChannels.includes(k)));
+                // 全渠道判断: 勾选数与全部渠道 key 一致才算"全部"; 空数组=未绑定任何渠道(0渠道)
+                const coversAllChannels = availableChannels.length > 0
+                  && channelKeys.length >= availableChannels.length
+                  && channelKeys.every((k: string) => availableChannels.includes(k));
                 const usedQuota = token.usage || 0;
                 const totalQuota = normalizeTokenQuota(config.total_quota);
                 const availableQuota = isUnlimitedTokenQuota(totalQuota)
@@ -528,9 +527,13 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">
                           {t('tokens.channels')}:{" "}
-                          <span className="text-foreground">
-                            {coversAllChannels ? t('tokens.channelsAll') : t('tokens.channelsCount', { count: channelKeys.length })}
-                          </span>
+                          {channelKeys.length === 0 ? (
+                            <span className="text-destructive font-medium">{t('tokens.channelsNone')}</span>
+                          ) : (
+                            <span className="text-foreground">
+                              {coversAllChannels ? t('tokens.channelsAll') : t('tokens.channelsCount', { count: channelKeys.length })}
+                            </span>
+                          )}
                         </span>
                         <span className="text-muted-foreground">
                           {t('tokens.usedAvailable')}:{" "}
@@ -564,9 +567,15 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
                         </div>
                       </div>
                       <div className="w-24 text-sm text-center flex-shrink-0">
-                        <span className="px-2 py-1 rounded-md bg-muted text-muted-foreground">
-                          {channelKeys.length === 0 ? t('tokens.channelsAll') : t('tokens.channelsCountWithUnit', { count: channelKeys.length })}
-                        </span>
+                        {channelKeys.length === 0 ? (
+                          <span className="px-2 py-1 rounded-md bg-destructive/10 text-destructive font-medium">
+                            {t('tokens.channelsNone')}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-md bg-muted text-muted-foreground">
+                            {coversAllChannels ? t('tokens.channelsAll') : t('tokens.channelsCountWithUnit', { count: channelKeys.length })}
+                          </span>
+                        )}
                       </div>
                       <div className="w-48 flex-shrink-0">
                         <div className="flex items-center justify-between text-xs mb-1">

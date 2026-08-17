@@ -257,7 +257,8 @@
     "selectAll": "全部选择",
     "clearAll": "清空",
     "myTokens": "我的令牌",
-    "allTokens": "所有令牌"
+    "allTokens": "所有令牌",
+    "channelsNone": "不可调用"
   },
   "pricing": {
     "title": "定价管理",

@@ -257,7 +257,8 @@
     "selectAll": "Select all",
     "clearAll": "Clear",
     "myTokens": "My tokens",
-    "allTokens": "All tokens"
+    "allTokens": "All tokens",
+    "channelsNone": "Unavailable"
   },
   "pricing": {
     "title": "Pricing",

@@ -53,9 +53,8 @@ export const fetchChannelsForToken = async (
     const channelKeys = tokenData.channel_keys;
 
     if (!channelKeys || channelKeys.length === 0) {
-        return await c.env.DB.prepare(
-            `SELECT key, value FROM channel_config`
-        ).all<ChannelConfigRow>();
+        // 空数组 = 未绑定任何渠道, 不可调用任何渠道
+        return { results: [] as ChannelConfigRow[], success: true };
     }
 
     const channelQuery = channelKeys.map(() => '?').join(',');
