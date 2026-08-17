@@ -1,6 +1,7 @@
 import { Context } from "hono";
 
 import type { D1Like } from "../storage/sqlite";
+import { getPricingMap, computeModelSplitCost, matchPricing } from "./pricing-cost";
 
 // env.DB 在不同环境下类型为 D1Database 或 D1Like, 统一转 D1Like
 const getDb = (c: Context<HonoCustomType>): D1Like => {
@@ -128,21 +129,47 @@ export const queryLocalUsageOverview = async (
     const range = getRange(requestedRange);
     const startSec = buildRangeStartSeconds(range);
     const tokenFilter = buildTokenFilter(tokenHashes);
-    // usage_record 表在 timestamp 存秒; 保证 DB 存在
     const db = getDb(c);
-    const row = await db.prepare(
-        `SELECT COUNT(*) AS requests,
+    // 按 requested_model 分组取 tokens, JS 里用当前定价实时算 cost
+    const rows = await db.prepare(
+        `SELECT requested_model AS model,
+                COUNT(*) AS requests,
                 SUM(success_flag) AS successes,
-                SUM(total_cost) AS total_cost,
                 SUM(total_tokens) AS total_tokens,
                 SUM(prompt_tokens) AS prompt_tokens,
                 SUM(completion_tokens) AS completion_tokens,
+                SUM(cached_tokens) AS cached_tokens,
                 COALESCE(AVG(latency_ms), 0) AS avg_latency_ms
-         FROM usage_record WHERE timestamp >= ?${tokenFilter.clause}`
-    ).bind(startSec, ...tokenFilter.params).first<Record<string, unknown>>();
+         FROM usage_record WHERE timestamp >= ?${tokenFilter.clause}
+         GROUP BY requested_model`
+    ).bind(startSec, ...tokenFilter.params).all<Record<string, unknown>>();
 
-    const requests = toNumber(row?.requests);
-    const successes = toNumber(row?.successes);
+    const pricingMap = await getPricingMap(c);
+    let requests = 0, successes = 0, promptTokens = 0, completionTokens = 0, cachedTokens = 0, totalTokens = 0, totalCost = 0, latencySum = 0, latencyCount = 0;
+
+    for (const row of rows.results || []) {
+        const r = toNumber(row.requests);
+        const s = toNumber(row.successes);
+        const pt = toNumber(row.prompt_tokens);
+        const ct = toNumber(row.completion_tokens);
+        const ct2 = toNumber(row.cached_tokens);
+        const split = computeModelSplitCost(
+            matchPricing(pricingMap, toText(row.model)),
+            pt, ct, ct2
+        );
+        requests += r;
+        successes += s;
+        promptTokens += pt;
+        completionTokens += ct;
+        cachedTokens += ct2;
+        totalTokens += toNumber(row.total_tokens);
+        totalCost += split.totalCost;
+        latencySum += toNumber(row.avg_latency_ms) * r;
+        latencyCount += r;
+    }
+
+    const avgLatencyMs = latencyCount > 0 ? latencySum / latencyCount : 0;
+
     return {
         range,
         totals: {
@@ -150,11 +177,11 @@ export const queryLocalUsageOverview = async (
             successes,
             failures: Math.max(0, requests - successes),
             successRate: requests > 0 ? successes / requests : 0,
-            totalCost: toNumber(row?.total_cost),
-            totalTokens: toNumber(row?.total_tokens),
-            promptTokens: toNumber(row?.prompt_tokens),
-            completionTokens: toNumber(row?.completion_tokens),
-            avgLatencyMs: toNumber(row?.avg_latency_ms),
+            totalCost,
+            totalTokens,
+            promptTokens,
+            completionTokens,
+            avgLatencyMs,
         },
     };
 };
@@ -173,33 +200,47 @@ export const queryLocalUsageTrend = async (
     const tokenFilter = buildTokenFilter(tokenHashes);
 
     const db = getDb(c);
-    // 用整数除法时间桶(所有数据库通用): FLOOR(timestamp / bucketSize)
+    // 按 (bucket, requested_model) 分组取 tokens
     const rows = await db.prepare(
-        `SELECT (timestamp / ?) AS bucket_idx, FLOOR(timestamp / ?) * ? AS bucket_ts,
-                COUNT(*) AS requests, SUM(success_flag) AS successes, SUM(total_cost) AS total_cost
+        `SELECT FLOOR(timestamp / ?) * ? AS bucket_ts, requested_model AS model,
+                COUNT(*) AS requests, SUM(success_flag) AS successes,
+                SUM(prompt_tokens) AS prompt_tokens, SUM(completion_tokens) AS completion_tokens,
+                SUM(cached_tokens) AS cached_tokens
          FROM usage_record WHERE timestamp >= ? AND timestamp < ?${tokenFilter.clause}
-         GROUP BY bucket_idx, bucket_ts ORDER BY bucket_ts ASC`
-    ).bind(bucketSize, bucketSize, bucketSize, startSec, endSec, ...tokenFilter.params).all<Record<string, unknown>>();
+         GROUP BY bucket_ts, requested_model ORDER BY bucket_ts ASC`
+    ).bind(bucketSize, bucketSize, startSec, endSec, ...tokenFilter.params).all<Record<string, unknown>>();
 
-    const rowsByBucket = new Map<number, Record<string, unknown>>();
-    normalizeTimestamps(rows.results).forEach((row) => {
-        rowsByBucket.set(toNumber(row.bucket_ts), row);
-    });
+    const pricingMap = await getPricingMap(c);
+    // 每 bucket 累计 requests/successes/cost
+    const acc = new Map<number, { requests: number; successes: number; totalCost: number }>();
+    for (const row of rows.results || []) {
+        const bt = toNumber(row.bucket_ts);
+        const cur = acc.get(bt) || { requests: 0, successes: 0, totalCost: 0 };
+        const r = toNumber(row.requests);
+        const split = computeModelSplitCost(
+            matchPricing(pricingMap, toText(row.model)),
+            toNumber(row.prompt_tokens), toNumber(row.completion_tokens), toNumber(row.cached_tokens)
+        );
+        cur.requests += r;
+        cur.successes += toNumber(row.successes);
+        cur.totalCost += split.totalCost;
+        acc.set(bt, cur);
+    }
 
     return {
         range,
         bucket: range === "24h" ? "1h" : "1d",
         points: bucketTimestamps.map((bucketTimestamp) => {
-            const row = rowsByBucket.get(bucketTimestamp) || {};
-            const requests = toNumber(row.requests);
-            const successes = toNumber(row.successes);
+            const row = acc.get(bucketTimestamp) || { requests: 0, successes: 0, totalCost: 0 };
+            const requests = row.requests;
+            const successes = row.successes;
             return {
                 timestamp: new Date(bucketTimestamp * 1000).toISOString(),
                 requests,
                 successes,
                 failures: Math.max(0, requests - successes),
                 successRate: requests > 0 ? successes / requests : 0,
-                totalCost: toNumber(row.total_cost),
+                totalCost: row.totalCost,
             };
         }),
     };
@@ -219,34 +260,69 @@ export const queryLocalUsageBreakdown = async (
     const column = BREAKDOWN_COLUMNS[dimension];
     const tokenFilter = buildTokenFilter(tokenHashes);
     const db = getDb(c);
+    // 按 (label, requested_model) 二级分组, 区间末按 label 合并并实时算 cost
     const rows = await db.prepare(
-        `SELECT ${column} AS label, COUNT(*) AS requests, SUM(success_flag) AS successes,
-                SUM(total_cost) AS total_cost, SUM(total_tokens) AS total_tokens,
-                SUM(prompt_tokens) AS prompt_tokens, SUM(completion_tokens) AS completion_tokens,
+        `SELECT ${column} AS label, requested_model AS model,
+                COUNT(*) AS requests, SUM(success_flag) AS successes,
+                SUM(total_tokens) AS total_tokens, SUM(prompt_tokens) AS prompt_tokens,
+                SUM(completion_tokens) AS completion_tokens, SUM(cached_tokens) AS cached_tokens,
                 COALESCE(AVG(latency_ms), 0) AS avg_latency_ms
          FROM usage_record WHERE timestamp >= ? AND ${column} != ''${tokenFilter.clause}
-         GROUP BY label ORDER BY requests DESC, total_cost DESC LIMIT 12`
+         GROUP BY label, requested_model`
     ).bind(startSec, ...tokenFilter.params).all<Record<string, unknown>>();
+
+    const pricingMap = await getPricingMap(c);
+    const labelAcc = new Map<string, {
+        requests: number; successes: number; totalTokens: number;
+        promptTokens: number; completionTokens: number; latencySum: number; chargeCount: number; totalCost: number;
+    }>();
+
+    for (const row of rows.results || []) {
+        const label = toText(row.label);
+        const cur = labelAcc.get(label) || {
+            requests: 0, successes: 0, totalTokens: 0, promptTokens: 0, completionTokens: 0,
+            latencySum: 0, chargeCount: 0, totalCost: 0,
+        };
+        const r = toNumber(row.requests);
+        const split = computeModelSplitCost(
+            matchPricing(pricingMap, toText(row.model)),
+            toNumber(row.prompt_tokens), toNumber(row.completion_tokens), toNumber(row.cached_tokens)
+        );
+        cur.requests += r;
+        cur.successes += toNumber(row.successes);
+        cur.totalTokens += toNumber(row.total_tokens);
+        cur.promptTokens += toNumber(row.prompt_tokens);
+        cur.completionTokens += toNumber(row.completion_tokens);
+        cur.latencySum += toNumber(row.avg_latency_ms) * r;
+        cur.chargeCount += r;
+        cur.totalCost += split.totalCost;
+        labelAcc.set(label, cur);
+    }
+
+    const items = [...labelAcc.entries()].map(([label, cur]) => {
+        const requests = cur.requests;
+        const successes = cur.successes;
+        return {
+            label,
+            requests,
+            successes,
+            failures: Math.max(0, requests - successes),
+            successRate: requests > 0 ? successes / requests : 0,
+            totalCost: cur.totalCost,
+            totalTokens: cur.totalTokens,
+            promptTokens: cur.promptTokens,
+            completionTokens: cur.completionTokens,
+            avgLatencyMs: cur.chargeCount > 0 ? cur.latencySum / cur.chargeCount : 0,
+        };
+    }).sort((a, b) => {
+        if (b.requests !== a.requests) return b.requests - a.requests;
+        return b.totalCost - a.totalCost;
+    }).slice(0, 12);
 
     return {
         range,
         dimension,
-        items: rows.results.map((row) => {
-            const requests = toNumber(row.requests);
-            const successes = toNumber(row.successes);
-            return {
-                label: toText(row.label),
-                requests,
-                successes,
-                failures: Math.max(0, requests - successes),
-                successRate: requests > 0 ? successes / requests : 0,
-                totalCost: toNumber(row.total_cost),
-                totalTokens: toNumber(row.total_tokens),
-                promptTokens: toNumber(row.prompt_tokens),
-                completionTokens: toNumber(row.completion_tokens),
-                avgLatencyMs: toNumber(row.avg_latency_ms),
-            };
-        }),
+        items,
     };
 };
 
