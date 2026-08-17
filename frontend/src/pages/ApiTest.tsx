@@ -93,10 +93,14 @@ const endpointParamKeys: Record<ChatEndpoint, PlaygroundParamKey[]> = {
   '/v1/messages': ['temperature', 'top_p', 'stream', 'max_tokens'],
 }
 
+// 最优默认参数: 覆盖生成质量/稳定性/多样性均衡 (OpenAI/Claude 通用最佳实践)
 const initialParams: PlaygroundParams = {
-  temperature: 0.7,
-  stream: true,
-  max_tokens: 1024,
+  temperature: 0.7,        // 平衡创造性与确定性
+  top_p: 1,                // 与 temperature 搭配: top_p=1 表示不过滤, 交由 temperature 控制
+  frequency_penalty: 0,    // 不额外惩罚重复(多数场景默认)
+  presence_penalty: 0,     // 不额外鼓励新话题(多数场景默认)
+  stream: true,            // 流式输出, 体验最好
+  max_tokens: 2048,        // 足够长且不浪费
 }
 
 const createMessageId = () => {
@@ -123,7 +127,7 @@ const buildAdvancedBody = (params: PlaygroundParams) => {
   const body: RequestBodyShape = {}
   for (const key of playgroundParamKeys) {
     const value = params[key]
-    if (value !== undefined && value !== '') {
+    if (value !== undefined) {
       body[key] = value
     }
   }
@@ -899,7 +903,9 @@ export function ApiTest() {
                   className="min-h-[76px] resize-none"
                   disabled={isLoading}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                    // 纯 Enter 发送 (无修饰键且非输入法组词); Shift+Enter 换行
+                    const nativeEvent = event.nativeEvent as unknown as { isComposing?: boolean }
+                    if (event.key === 'Enter' && !event.shiftKey && !nativeEvent.isComposing) {
                       event.preventDefault()
                       void sendConversation()
                     }
