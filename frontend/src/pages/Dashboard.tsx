@@ -29,6 +29,14 @@ export function Dashboard() {
       setRegError(t('dashboard.regInvalid'));
       return;
     }
+    if (!regForm.invite_code.trim()) {
+      setRegError(t('dashboard.inviteCodeRequired'));
+      return;
+    }
+    if (!regForm.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regForm.email.trim())) {
+      setRegError(t('dashboard.emailRequired'));
+      return;
+    }
     setRegSubmitting(true);
     try {
       await apiClient.registerUser({
@@ -231,14 +239,14 @@ export function Dashboard() {
                     onChange={(e) => setRegForm({ ...regForm, username: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-email">{t('users.email')}</Label>
+                  <Label htmlFor="reg-email">{t('users.email')} *</Label>
                   <Input id="reg-email" type="email" value={regForm.email}
-                    onChange={(e) => setRegForm({ ...regForm, email: e.target.value })} placeholder="user@example.com" />
+                    onChange={(e) => setRegForm({ ...regForm, email: e.target.value })} placeholder="user@example.com" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-invite">{t('dashboard.inviteCode')}</Label>
+                  <Label htmlFor="reg-invite">{t('dashboard.inviteCode')} *</Label>
                   <Input id="reg-invite" value={regForm.invite_code}
-                    onChange={(e) => setRegForm({ ...regForm, invite_code: e.target.value })} />
+                    onChange={(e) => setRegForm({ ...regForm, invite_code: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reg-password">{t('auth.passwordLabel')}</Label>

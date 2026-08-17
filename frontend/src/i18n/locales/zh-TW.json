@@ -111,7 +111,9 @@
     "inviteCodes": "邀請碼管理",
     "inviteQuota": "註冊贈送額度",
     "inviteCount": "可用次數",
-    "inviteUsed": "已用次數"
+    "inviteUsed": "已用次數",
+    "inviteCodeRequired": "請填寫邀請碼",
+    "emailRequired": "請填寫有效的郵箱地址"
   },
   "channels": {
     "title": "渠道管理",

@@ -23,8 +23,8 @@ const registerSchema = z.object({
     username: z.string().trim().min(3).max(20),
     password: z.string().min(6).max(64),
     display_name: z.string().trim().max(30).optional().default(""),
-    email: z.string().email().max(100).optional().default(""),
-    invite_code: z.string().trim().optional(),
+    email: z.string().email().max(100),
+    invite_code: z.string().trim().min(1),
 });
 
 export const UserRegisterEndpoint = {
@@ -47,18 +47,18 @@ export const UserRegisterEndpoint = {
             return c.json({ success: false, error: "Username already exists" }, 409);
         }
 
-        // 邀请码: 注册需先校验邀请码 (可选; 提供则校验并消耗)
-        let inviteeQuota = 0;
-        if (invite_code) {
-            const normalizedCode = invite_code.trim().toUpperCase();
-            const invite = await c.env.DB.prepare(
-                `SELECT id, quota, count, used_count, status FROM invite_code WHERE code = ?`
-            ).bind(normalizedCode).first();
-            if (!invite || invite.status !== 1 || (invite.used_count || 0) >= (invite.count || 1)) {
-                return c.json({ success: false, error: "Invalid or expired invite code" }, 400);
-            }
-            inviteeQuota = Number(invite.quota) || 0;
+        // 邀请码: 注册必填, 校验并消耗 (无邀请码不允许注册)
+        const normalizedCode = invite_code ? invite_code.trim().toUpperCase() : "";
+        if (!normalizedCode) {
+            return c.json({ success: false, error: "Invite code is required" }, 400);
         }
+        const invite = await c.env.DB.prepare(
+            `SELECT id, quota, count, used_count, status FROM invite_code WHERE code = ?`
+        ).bind(normalizedCode).first();
+        if (!invite || invite.status !== 1 || (invite.used_count || 0) >= (invite.count || 1)) {
+            return c.json({ success: false, error: "Invalid or expired invite code" }, 400);
+        }
+        const inviteeQuota = Number(invite.quota) || 0;
 
         const { hash, salt } = await hashPassword(password);
         const storedHash = `${salt}:${hash}`;

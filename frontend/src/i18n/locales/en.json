@@ -111,7 +111,9 @@
     "inviteCodes": "Invite codes",
     "inviteQuota": "Signup quota",
     "inviteCount": "Uses",
-    "inviteUsed": "Used"
+    "inviteUsed": "Used",
+    "inviteCodeRequired": "Invite code is required",
+    "emailRequired": "Please enter a valid email"
   },
   "channels": {
     "title": "Channels",
