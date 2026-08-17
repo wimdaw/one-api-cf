@@ -124,10 +124,13 @@ export const findChannelModelMapping = (
 ): ChannelModelMapping | null => {
     const channelModels = getChannelModels(config);
 
-    // 精确匹配（大小写不敏感）
+    // 精确匹配 name (对外名) 或 id (真实模型名), 大小写不敏感
     const normalizedModel = model.toLowerCase();
     for (const channelModel of channelModels) {
-        if (channelModel.name.toLowerCase() === normalizedModel) {
+        if (
+            channelModel.name.toLowerCase() === normalizedModel ||
+            (channelModel.id && channelModel.id.toLowerCase() === normalizedModel)
+        ) {
             return channelModel;
         }
     }

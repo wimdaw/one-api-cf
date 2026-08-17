@@ -178,8 +178,26 @@ export const TokenUtils = {
         // 可传入提前读取的全局定价映射，避免循环内 N+1 查询
         globalPricing: Record<string, ModelPricing> | null | undefined = undefined
     ): Promise<ModelPricing | null> {
-        // Check channel-specific pricing first
-        const channelPricing = findPricingInMap(channelConfig?.model_pricing, model);
+        // 对外名 → 真实模型 id 解析: 若调用用了渠道对外模型名(no-free), 定价键是真实 id(free), 需先匹配
+        const resolveRealId = (m: string): string | undefined => {
+            for (const cm of channelConfig?.models || []) {
+                if (!cm || typeof cm !== "object") continue;
+                const cmId = String(cm.id ?? "");
+                const cmName = String(cm.name ?? "");
+                if ((cmName && cmName.toLowerCase() === m.toLowerCase())
+                    || (cmId && cmId.toLowerCase() === m.toLowerCase())) {
+                    return cmId;
+                }
+            }
+            return undefined;
+        };
+
+        // Check channel-specific pricing first (按对外名和真实 id 各查一次)
+        const realId = resolveRealId(model);
+        let channelPricing = findPricingInMap(channelConfig?.model_pricing, model);
+        if (!channelPricing && realId) {
+            channelPricing = findPricingInMap(channelConfig?.model_pricing, realId);
+        }
         if (channelPricing) {
             return channelPricing;
         }
@@ -187,7 +205,11 @@ export const TokenUtils = {
         // Fallback to global pricing
         const globalPricingMap = globalPricing
             ?? await getJsonSetting<Record<string, ModelPricing>>(c, CONSTANTS.MODEL_PRICING_KEY);
-        return findPricingInMap(globalPricingMap, model);
+        let gp = findPricingInMap(globalPricingMap, model);
+        if (!gp && realId) {
+            gp = findPricingInMap(globalPricingMap, realId);
+        }
+        return gp;
     },
     normalizeQuota(value: unknown): number {
         return normalizeTokenQuota(value);

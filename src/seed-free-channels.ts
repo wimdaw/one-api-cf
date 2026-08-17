@@ -34,12 +34,12 @@ export const FREE_OPENCODE_CHANNEL: ChannelConfig = {
     mirrors: DEFAULT_OPENCODE_MIRRORS,
     models: [
         { id: "big-pickle", name: "big-pickle" },
-        { id: "deepseek-v4-flash-free", name: "deepseek-v4-flash-free" },
-        { id: "hy3-free", name: "hy3-free" },
-        { id: "laguna-s-2.1-free", name: "laguna-s-2.1-free" },
-        { id: "mimo-v2.5-free", name: "mimo-v2.5-free" },
-        { id: "nemotron-3-ultra-free", name: "nemotron-3-ultra-free" },
-        { id: "nemotron-3.5-lightning-free", name: "nemotron-3.5-lightning-free" },
+        { id: "deepseek-v4-flash-free", name: "deepseek-v4-flash" },
+        { id: "hy3-free", name: "hy3" },
+        { id: "laguna-s-2.1-free", name: "laguna-s-2.1" },
+        { id: "mimo-v2.5-free", name: "mimo-v2.5" },
+        { id: "nemotron-3-ultra-free", name: "nemotron-3-ultra" },
+        { id: "nemotron-3.5-lightning-free", name: "nemotron-3.5-lightning" },
     ],
 };
 
@@ -55,19 +55,19 @@ export const FREE_KILO_CHANNEL: ChannelConfig = {
     auto_retry: true,
     auto_rotate: true,
     models: [
-        { id: "kilo-auto/free", name: "kilo-auto/free" },
-        { id: "cohere/north-mini-code:free", name: "cohere/north-mini-code:free" },
-        { id: "dots-studio/dots-3-note-preview:free", name: "dots-studio/dots-3-note-preview:free" },
-        { id: "liquid/lfm-2.5-2.6b:free", name: "liquid/lfm-2.5-2.6b:free" },
-        { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", name: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free" },
-        { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "nvidia/nemotron-3-super-120b-a12b:free" },
-        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "nvidia/nemotron-3-ultra-550b-a55b:free" },
-        { id: "nvidia/nemotron-3.5-content-safety:free", name: "nvidia/nemotron-3.5-content-safety:free" },
-        { id: "nvidia/nemotron-3.5-lightning:free", name: "nvidia/nemotron-3.5-lightning:free" },
-        { id: "poolside/laguna-s-2.1:free", name: "poolside/laguna-s-2.1:free" },
-        { id: "poolside/laguna-xs-2.1:free", name: "poolside/laguna-xs-2.1:free" },
-        { id: "stepfun/step-3.7-flash:free", name: "stepfun/step-3.7-flash:free" },
-        { id: "tencent/hy3:free", name: "tencent/hy3:free" },
+        { id: "kilo-auto/free", name: "kilo-auto" },
+        { id: "cohere/north-mini-code:free", name: "cohere/north-mini-code" },
+        { id: "dots-studio/dots-3-note-preview:free", name: "dots-studio/dots-3-note-preview" },
+        { id: "liquid/lfm-2.5-2.6b:free", name: "liquid/lfm-2.5-2.6b" },
+        { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", name: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning" },
+        { id: "nvidia/nemotron-3-super-120b-a12b:free", name: "nvidia/nemotron-3-super-120b-a12b" },
+        { id: "nvidia/nemotron-3-ultra-550b-a55b:free", name: "nvidia/nemotron-3-ultra-550b-a55b" },
+        { id: "nvidia/nemotron-3.5-content-safety:free", name: "nvidia/nemotron-3.5-content-safety" },
+        { id: "nvidia/nemotron-3.5-lightning:free", name: "nvidia/nemotron-3.5-lightning" },
+        { id: "poolside/laguna-s-2.1:free", name: "poolside/laguna-s-2.1" },
+        { id: "poolside/laguna-xs-2.1:free", name: "poolside/laguna-xs-2.1" },
+        { id: "stepfun/step-3.7-flash:free", name: "stepfun/step-3.7-flash" },
+        { id: "tencent/hy3:free", name: "tencent/hy3" },
     ],
 };
 
@@ -119,25 +119,41 @@ export async function seedFreeChannels(
         try {
             const exists = await channelExists(c, preset.key);
             if (exists) {
-                // 升级补丁: 已存在的 opencode-free 渠道若未配置镜像, 补默认镜像列表 (不覆盖用户配置)
-                if (preset.config.mirrors && preset.config.mirrors.length > 0) {
+                // 升级补丁: 已存在渠道, 若模型 name 含 free 后缀, 替换为去 free 的对外名 (id 保留真实免费名)
+                // 只改含 free 的 name, 不改其他用户自定义 name/id, 幂等
+                try {
                     const row = await c.env.DB.prepare(
                         "SELECT value FROM channel_config WHERE key = ?"
                     ).bind(preset.key).first<{ value: string }>();
                     if (row?.value) {
-                        try {
-                            const existing = JSON.parse(row.value) as ChannelConfig;
-                            if (!existing.mirrors || existing.mirrors.length === 0) {
-                                existing.mirrors = resolveOpenCodeMirrors(c.env);
-                                await c.env.DB.prepare(
-                                    `UPDATE channel_config SET value = ?, updated_at = datetime('now') WHERE key = ?`
-                                ).bind(JSON.stringify(existing), preset.key).run();
-                                console.log(`[seed] Backfilled mirrors for ${preset.key}`);
+                        const existing = JSON.parse(row.value) as ChannelConfig;
+                        let changed = false;
+                        if (preset.config.mirrors && preset.config.mirrors.length > 0 && (!existing.mirrors || existing.mirrors.length === 0)) {
+                            existing.mirrors = resolveOpenCodeMirrors(c.env);
+                            changed = true;
+                        }
+                        // name 去 free 后缀: 对齐 preset 里的预设 name (只处理 preset 里定义的模型)
+                        const presetByName = new Map<string, string>();
+                        for (const pm of preset.config.models || []) {
+                            presetByName.set(pm.name.toLowerCase(), pm.name);
+                            if (pm.id) presetByName.set(pm.id.toLowerCase(), pm.name);
+                        }
+                        for (const m of existing.models || []) {
+                            const target = presetByName.get(m.name?.toLowerCase());
+                            if (target && m.name !== target) {
+                                m.name = target;
+                                changed = true;
                             }
-                        } catch {
-                            // 配置损坏时跳过, 保持原样
+                        }
+                        if (changed) {
+                            await c.env.DB.prepare(
+                                `UPDATE channel_config SET value = ?, updated_at = datetime('now') WHERE key = ?`
+                            ).bind(JSON.stringify(existing), preset.key).run();
+                            console.log(`[seed] Normalized display names for ${preset.key}`);
                         }
                     }
+                } catch {
+                    // 配置损坏时跳过, 保持原样
                 }
                 continue;
             }
