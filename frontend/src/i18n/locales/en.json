@@ -307,7 +307,7 @@
     "breakdownTokens": "Tokens {{count}}",
     "breakdownCost": "Cost {{cost}}",
     "userRanking": "User Ranking",
-    "userRankingDesc": "Identify the most active users by request volume"
+    "userRankingDesc": "Identify the most active users by request volume."
   },
   "usageLogs": {
     "title": "Usage Logs",

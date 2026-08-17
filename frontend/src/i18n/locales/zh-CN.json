@@ -307,7 +307,7 @@
     "breakdownTokens": "消耗 {{count}}",
     "breakdownCost": "费用 {{cost}}",
     "userRanking": "用户排行",
-    "userRankingDesc": "按请求量识别最活跃的访问用户"
+    "userRankingDesc": "按请求量识别最活跃的访问用户。"
   },
   "usageLogs": {
     "title": "使用日志",
