@@ -10,11 +10,15 @@ echo "=== 1. 构建前端 -> public/ ==="
 bun run --filter frontend build
 
 echo "=== 2. 打包 worker -> public/_worker.js (Pages Advanced mode) ==="
+# --external pg/mysql2: 这些 Node-only 数据库驱动只在 Docker(Node) 模式使用,
+# Worker 模式走 D1/KV 不调用它们; 排除可避免 node 内置(tls/dns)在大 bundle 中报错。
 bun build src/index.ts \
   --outfile=public/_worker.js \
   --target=browser \
   --format=esm \
-  --minify
+  --minify \
+  --external pg \
+  --external mysql2
 
 echo "=== 3. 复制 sql.js wasm 到 public/ (KV 模式首次初始化用) ==="
 cp node_modules/sql.js/dist/sql-wasm.wasm public/sql-wasm.wasm

@@ -34,13 +34,11 @@ async function loadWasmBytes(kv: any, assets: any): Promise<ArrayBuffer> {
             if (resp && resp.ok) {
                 wasmBytes = await resp.arrayBuffer()
             }
-        } catch {
-            // 忽略
+        } catch (e) {
+            console.error("[kv] load wasm from assets failed:", e)
         }
     }
 
-    // 3. 兜底: 用内置的最小 sql.js asm 版? 不——KV 模式下必须保证可用。
-    //    这里若拿不到 wasm 则抛错, 提示用户确保构建脚本复制了 wasm。
     if (!wasmBytes || (wasmBytes as ArrayBuffer).byteLength === 0) {
         throw new Error(
             "[kv] sql.js wasm not found. Ensure the build script copied sql-wasm.wasm to public/ " +
@@ -62,7 +60,7 @@ async function getSqlModule(kv: any, assets: any): Promise<any> {
     if (!sqlReadyPromise) {
         sqlReadyPromise = (async () => {
             const wasmBinary = await loadWasmBytes(kv, assets)
-            // 必须在动态 import 前设置 location stub —— sql-wasm-browser.js 在模块顶层
+            // 必须在动态 import 前设置 location stub —— sql-asm/wasm glue 在模块顶层
             // 会读 self.location.href (ba = !!WorkerGlobalScope 为 true), 而 Worker 无 location
             const g = globalThis as any
             if (!g.location) {
@@ -174,7 +172,7 @@ export class KvDriver {
         return this.pendingPersist
     }
 
-    // 串行持久化 (fire-and-forget, 用于高频 usage 写入)
+    // 防抖持久化: 配置写操作快速落盘, 高频写入合并
     private queuePersist(): void {
         if (this.persistTimer) {
             return
@@ -185,7 +183,7 @@ export class KvDriver {
         }, 150)
     }
 
-    // 防抖持久化: 配置写操作快速落盘, 高频写入合并
+    // persist(debounceMs <= 0): 立即落盘; 否则防抖
     persist(debounceMs = 150): Promise<void> {
         if (debounceMs <= 0) {
             return this.persistNow()
