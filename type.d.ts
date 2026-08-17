@@ -1,5 +1,6 @@
 type Variables = {
     lang: string | undefined | null
+    user?: import("../src/user/auth").UserRow | null
 }
 
 type AnalyticsEngineDataPoint = {
@@ -17,6 +18,8 @@ type CloudflareBindings = {
     DB: D1Database;
     ASSETS: Fetcher;
     ADMIN_TOKEN: string;
+    ADMIN_USERNAME?: string;
+    ADMIN_PASSWORD?: string;
     CF_API_TOKEN?: string;
     CF_ACCOUNT_ID?: string;
     FRONTEND_DEV_SERVER_URL?: string;
@@ -175,6 +178,7 @@ type AdminLoginChallengeRow = BaseDbRow & {
 
 type AdminSessionRow = BaseDbRow & {
     token_hash: string;
+    user_id: number | null;
     expires_at: string;
     last_used_at: string;
 }

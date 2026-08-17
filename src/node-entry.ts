@@ -106,6 +106,8 @@ async function main() {
         USAGE_ANALYTICS: undefined, // 触发 usage-logger 优雅降级
         USAGE_ANALYTICS_DATASET: process.env.USAGE_ANALYTICS_DATASET || "usage_events_by_token",
         ADMIN_TOKEN: process.env.ADMIN_TOKEN || "admin",
+        ADMIN_USERNAME: process.env.ADMIN_USERNAME || "",
+        ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "",
         CF_API_TOKEN: process.env.CF_API_TOKEN || "",
         CF_ACCOUNT_ID: process.env.CF_ACCOUNT_ID || "",
         ADMIN_CORS_ORIGINS: process.env.ADMIN_CORS_ORIGINS || "",

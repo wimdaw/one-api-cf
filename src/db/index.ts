@@ -4,6 +4,30 @@ import { CONSTANTS } from "../constants";
 import { getSetting, saveSetting } from "../utils";
 import { sanitizeChannelConfig } from "../channel-config";
 import { seedFreeChannels } from "../seed-free-channels";
+import { hashPassword, ROLE_ROOT, STATUS_ENABLED } from "../user/auth";
+
+// 种子默认管理员账号: 首次部署自动创建 (用户名/密码来自环境变量)
+//   ADMIN_USERNAME: 默认管理员用户名 (默认 "admin")
+//   ADMIN_PASSWORD: 默认管理员密码 (默认取 ADMIN_TOKEN, 再回退 "admin")
+// 参照 one-api 超级管理员, 幂等(已存在则跳过)
+async function seedDefaultAdmin(c: Context<HonoCustomType>): Promise<void> {
+  const username = (c.env.ADMIN_USERNAME as string) || "admin";
+  const existing = await c.env.DB.prepare(
+    "SELECT id FROM users WHERE username = ?"
+  ).bind(username).first<{ id: number }>();
+  if (existing) {
+    return;
+  }
+
+  const password = (c.env.ADMIN_PASSWORD as string) || c.env.ADMIN_TOKEN || "admin";
+  const { hash, salt } = await hashPassword(password);
+  const storedHash = `${salt}:${hash}`;
+
+  await c.env.DB.prepare(
+    `INSERT INTO users (username, password_hash, display_name, role, status, quota, used_quota)
+     VALUES (?, ?, 'Administrator', ?, ?, -1, 0)`
+  ).bind(username, storedHash, ROLE_ROOT, STATUS_ENABLED).run();
+}
 
 const DB_INIT_QUERIES = `
 CREATE TABLE IF NOT EXISTS channel_config (
@@ -42,6 +66,7 @@ CREATE TABLE IF NOT EXISTS admin_login_challenge (
 );
 CREATE TABLE IF NOT EXISTS admin_session (
     token_hash TEXT PRIMARY KEY,
+    user_id INTEGER,
     expires_at TEXT NOT NULL,
     last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -364,6 +389,10 @@ const dbOperations = {
 
         // Seed 默认免费渠道(OpenCode + Kilo Gateway),已存在则跳过
         await seedFreeChannels(c);
+
+        // 种子管理员账号 (默认 admin, 密码 = ADMIN_TOKEN 环境变量)
+        // 参照 one-api: 首次部署自动创建超级管理员
+        await seedDefaultAdmin(c);
 
         await saveSetting(c, CONSTANTS.DB_VERSION_KEY, CONSTANTS.DB_VERSION);
     },

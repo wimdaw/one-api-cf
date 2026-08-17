@@ -454,7 +454,8 @@ export const clearAdminSessionCookie = (
 
 export const createAdminSession = async (
     c: Context<HonoCustomType>,
-    telegramSecurityEnabled = false
+    telegramSecurityEnabled = false,
+    userId?: number
 ): Promise<{ sessionToken: string; expiresAt: string; ttlMs: number }> => {
     await cleanupExpiredArtifacts(c);
 
@@ -464,9 +465,9 @@ export const createAdminSession = async (
     const expiresAt = new Date(Date.now() + ttlMs).toISOString();
 
     await c.env.DB.prepare(
-        `INSERT INTO admin_session (token_hash, expires_at)
-         VALUES (?, ?)`
-    ).bind(tokenHash, expiresAt).run();
+        `INSERT INTO admin_session (token_hash, user_id, expires_at)
+         VALUES (?, ?, ?)`
+    ).bind(tokenHash, userId ?? null, expiresAt).run();
 
     return {
         sessionToken,
@@ -493,27 +494,27 @@ export const invalidateAdminSession = async (
 export const validateAdminSession = async (
     c: Context<HonoCustomType>,
     sessionToken: string | null | undefined
-): Promise<boolean> => {
+): Promise<number | null> => {
     if (!sessionToken) {
-        return false;
+        return null;
     }
 
     await cleanupExpiredArtifacts(c);
 
     const tokenHash = await toSha256Hex(sessionToken);
     const session = await c.env.DB.prepare(
-        `SELECT token_hash, expires_at FROM admin_session WHERE token_hash = ?`
-    ).bind(tokenHash).first<Pick<AdminSessionRow, "token_hash" | "expires_at">>();
+        `SELECT token_hash, user_id, expires_at FROM admin_session WHERE token_hash = ?`
+    ).bind(tokenHash).first<Pick<AdminSessionRow, "token_hash" | "user_id" | "expires_at">>();
 
     if (!session?.token_hash) {
-        return false;
+        return null;
     }
 
     if (Date.parse(session.expires_at) <= Date.now()) {
         await c.env.DB.prepare(
             `DELETE FROM admin_session WHERE token_hash = ?`
         ).bind(tokenHash).run();
-        return false;
+        return null;
     }
 
     await c.env.DB.prepare(
@@ -523,7 +524,7 @@ export const validateAdminSession = async (
          WHERE token_hash = ?`
     ).bind(tokenHash).run();
 
-    return true;
+    return session.user_id ?? null;
 };
 
 export const createAdminLoginChallenge = async (

@@ -76,7 +76,7 @@ export const UserLoginEndpoint = {
             return c.json({ success: false, error: "Invalid username or password" }, 401);
         }
 
-        const session = await createAdminSession(c, false);
+        const session = await createAdminSession(c, false, user.id);
         setAdminSessionCookie(c, session.sessionToken, session.expiresAt, session.ttlMs);
 
         return c.json({

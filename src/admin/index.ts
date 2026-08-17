@@ -50,6 +50,7 @@ import {
     getAdminSessionTokenFromRequest,
     validateAdminSession,
 } from "./auth_shared"
+import { findUserById, isAdmin } from "../user/auth"
 
 const app = new Hono<HonoCustomType>()
 export const api = fromHono(app)
@@ -76,9 +77,23 @@ app.use('/api/admin/*', async (c, next) => {
     const sessionToken = getAdminSessionTokenFromRequest(c);
 
     if (sessionToken) {
-        if (await validateAdminSession(c, sessionToken)) {
-            await next();
-            return;
+        const sessionUserId = await validateAdminSession(c, sessionToken);
+        if (sessionUserId !== null) {
+            // 用户会话: 仅管理员用户可访问管理后台
+            if (sessionUserId > 0) {
+                const user = await findUserById(c, sessionUserId);
+                if (user && user.status === 1 && isAdmin(user)) {
+                    c.set("user", user);
+                    await next();
+                    return;
+                }
+                clearAdminSessionCookie(c);
+            } else {
+                // 纯管理员会话 (ADMIN_TOKEN 登录, 无 user_id) 保持兼容
+                c.set("user", null);
+                await next();
+                return;
+            }
         }
 
         clearAdminSessionCookie(c);
