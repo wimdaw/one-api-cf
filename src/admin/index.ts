@@ -51,6 +51,7 @@ import {
     validateAdminSession,
 } from "./auth_shared"
 import { findUserById, isAdmin } from "../user/auth"
+import { registerUserApi } from "../user/routes"
 
 const app = new Hono<HonoCustomType>()
 export const api = fromHono(app)
@@ -162,3 +163,6 @@ app.post("/api/admin/user", UserCreateEndpoint.handler)
 app.get("/api/admin/user/self", UserSelfEndpoint.handler)
 app.put("/api/admin/user/:id", UserUpdateEndpoint.handler)
 app.delete("/api/admin/user/:id", UserDeleteEndpoint.handler)
+
+// 用户自助路由 (/api/user/*): 登录即可访问, 不要求管理员
+registerUserApi(app)

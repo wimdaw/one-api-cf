@@ -165,7 +165,19 @@ export const resolveChannel = async (
         availableChannels = [selectedChannel];
     }
 
-    if (!TokenUtils.hasRemainingQuota(tokenData.total_quota, usage)) {
+    const paidQuotaExhausted = !TokenUtils.hasRemainingQuota(tokenData.total_quota, usage);
+
+    let userHasQuota = true;
+    if (tokenData.user_id && tokenData.user_id > 0) {
+        const userBalance = await c.env.DB.prepare(
+            `SELECT quota, used_quota FROM users WHERE id = ?`
+        ).bind(tokenData.user_id).first<{ quota: number; used_quota: number }>();
+        if (userBalance) {
+            userHasQuota = userBalance.quota === -1 || (userBalance.used_quota || 0) < (userBalance.quota || 0);
+        }
+    }
+
+    if (paidQuotaExhausted || !userHasQuota) {
         // 一次性读取全局定价，避免对每个渠道重复查询
         const globalPricing = await getJsonSetting<Record<string, ModelPricing>>(c, CONSTANTS.MODEL_PRICING_KEY);
         const freeChannels = await Promise.all(

@@ -404,7 +404,8 @@ const buildAdminSessionCookieBaseOptions = (
 ) => {
     return {
         httpOnly: true,
-        path: "/api/admin",
+        // path 覆盖 /api/admin 与 /api/user (用户自助路由), 以便共用同一会话
+        path: "/api",
         sameSite: "Lax" as const,
         secure: isSecureCookieRequest(c),
     };

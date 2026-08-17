@@ -154,6 +154,7 @@ type ApiTokenData = {
     name: string;
     channel_keys: string[];
     total_quota: number; // 原始计费单位整数，-1 表示无限额度
+    user_id?: number; // 归属用户 (仅用户自助创建的令牌)
 }
 
 type RequestTrackingState = {

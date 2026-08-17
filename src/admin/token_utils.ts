@@ -105,6 +105,35 @@ const findPricingInMap = (
 export const TokenUtils = {
     async updateUsage(c: Context<HonoCustomType>, key: string, usageAmount: number): Promise<boolean> {
         try {
+            // 先读取 token 归属: 用户自助令牌需同时扣减用户余额
+            const tokenRow = await c.env.DB.prepare(
+                "SELECT value FROM api_token WHERE key = ?"
+            ).bind(key).first<{ value: string }>();
+
+            let ownerUserId: number | null = null;
+            if (tokenRow?.value) {
+                try {
+                    const data = JSON.parse(tokenRow.value) as ApiTokenData;
+                    ownerUserId = data.user_id ?? null;
+                } catch {
+                    // ignore
+                }
+            }
+
+            // 若 token 归属用户, 先原子扣减用户余额 (余额不足则拒绝)
+            if (ownerUserId !== null && ownerUserId > 0 && usageAmount > 0) {
+                const userResult = await c.env.DB.prepare(
+                    `UPDATE users
+                     SET used_quota = used_quota + ?, updated_at = datetime('now')
+                     WHERE id = ? AND (quota = -1 OR used_quota + ? <= quota)`
+                ).bind(usageAmount, ownerUserId, usageAmount).run();
+
+                if (!userResult.meta?.changes || userResult.meta.changes === 0) {
+                    // 用户余额不足: 不扣 token, 拒绝本次计费
+                    return false;
+                }
+            }
+
             // 原子条件扣费：未超配额才累加，避免并发请求把 usage 打到配额以下（负余额）
             const result = await c.env.DB.prepare(
                 `UPDATE api_token
@@ -126,6 +155,15 @@ export const TokenUtils = {
                    AND json_extract(value, '$.total_quota') != -1
                    AND usage < json_extract(value, '$.total_quota')`
             ).bind(key).run();
+
+            // 若扣了用户余额但 token 配额不足, 回滚用户余额 (保持一致性)
+            if (ownerUserId !== null && ownerUserId > 0 && usageAmount > 0) {
+                await c.env.DB.prepare(
+                    `UPDATE users
+                     SET used_quota = MAX(0, used_quota - ?), updated_at = datetime('now')
+                     WHERE id = ?`
+                ).bind(usageAmount, ownerUserId).run();
+            }
 
             return false;
         } catch (error) {
