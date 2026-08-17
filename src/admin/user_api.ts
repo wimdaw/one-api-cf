@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
     findUserById,
     findUserByUsername,
+    generateAffCode,
     hashPassword,
     ROLE_ROOT,
     ROLE_USER,
@@ -25,7 +26,7 @@ export const UserListEndpoint = {
     },
     handler: async (c: Context<HonoCustomType>) => {
         const now = await c.env.DB.prepare(
-            "SELECT id, username, display_name, role, status, quota, used_quota, inviter_id, created_at FROM users ORDER BY id ASC"
+            "SELECT id, username, display_name, role, status, quota, used_quota, inviter_id, aff_code, created_at FROM users ORDER BY id ASC"
         ).all();
         const users = (now.results || []).map((row: any) => ({
             ...row,
@@ -62,10 +63,11 @@ export const UserCreateEndpoint = {
 
         const { hash, salt } = await hashPassword(password);
         const storedHash = `${salt}:${hash}`;
+        const affCode = generateAffCode();
         const result = await c.env.DB.prepare(
-            `INSERT INTO users (username, password_hash, display_name, role, status, quota, used_quota)
-             VALUES (?, ?, ?, ?, ?, ?, 0)`
-        ).bind(username, storedHash, display_name, ROLE_USER, STATUS_ENABLED, quota).run();
+            `INSERT INTO users (username, password_hash, display_name, role, status, quota, used_quota, aff_code)
+             VALUES (?, ?, ?, ?, ?, ?, 0, ?)`
+        ).bind(username, storedHash, display_name, ROLE_USER, STATUS_ENABLED, quota, affCode).run();
 
         return c.json({ success: true, data: { changes: result.meta?.changes } });
     },

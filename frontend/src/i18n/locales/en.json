@@ -448,7 +448,11 @@
     "displayPrecisionDesc": "Display amounts with {{decimals}} decimal places, e.g. ${{example}}",
     "apiDocs": "API Documentation",
     "apiDocsDesc": "When enabled, exposes Swagger, ReDoc, and OpenAPI JSON. When disabled, these routes return 404.",
-    "configSaved": "Settings saved"
+    "configSaved": "Settings saved",
+    "invite": "Invite & Earn",
+    "inviteDesc": "Both parties earn quota when a user registers",
+    "inviteeQuota": "Invitee bonus quota",
+    "inviterQuota": "Inviter reward quota"
   },
   "notFound": {
     "title": "Page Not Found",
@@ -527,7 +531,10 @@
     "redeemTitle": "Redeem Code",
     "redeemPlaceholder": "Enter redemption code (e.g. XXXX-XXXX-XXXX-XXXX)",
     "redeem": "Redeem",
-    "redeemed": "Redeemed"
+    "redeemed": "Redeemed",
+    "inviteTitle": "Invite & Earn",
+    "inviteDesc": "Share your invite code - both you and your friend earn quota on signup",
+    "inviteNone": "Invite code not available"
   },
   "redemptions": {
     "title": "Redemptions",

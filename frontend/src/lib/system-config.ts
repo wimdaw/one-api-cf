@@ -1,4 +1,4 @@
-import { type AdminSecurityConfig, type ApiDocsConfig, type SystemConfig } from "@/types";
+import { type AdminSecurityConfig, type ApiDocsConfig, type InviteConfig, type SystemConfig } from "@/types";
 import {
   DEFAULT_BILLING_DISPLAY_DECIMALS,
   normalizeBillingDisplayDecimals,
@@ -16,10 +16,16 @@ export const DEFAULT_API_DOCS_CONFIG: ApiDocsConfig = {
   enabled: true,
 };
 
+export const DEFAULT_INVITE_CONFIG: InviteConfig = {
+  quotaForInvitee: 0,
+  quotaForInviter: 0,
+};
+
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   displayDecimals: DEFAULT_BILLING_DISPLAY_DECIMALS,
   adminSecurity: DEFAULT_ADMIN_SECURITY_CONFIG,
   apiDocs: DEFAULT_API_DOCS_CONFIG,
+  invite: DEFAULT_INVITE_CONFIG,
 };
 
 export const PRECISION_OPTIONS = [
@@ -50,11 +56,23 @@ export const normalizeApiDocsConfig = (value?: Partial<ApiDocsConfig> | null): A
   };
 };
 
+export const normalizeInviteConfig = (value?: Partial<InviteConfig> | null): InviteConfig => {
+  return {
+    quotaForInvitee: typeof value?.quotaForInvitee === "number" && value.quotaForInvitee > 0
+      ? value.quotaForInvitee
+      : DEFAULT_INVITE_CONFIG.quotaForInvitee,
+    quotaForInviter: typeof value?.quotaForInviter === "number" && value.quotaForInviter > 0
+      ? value.quotaForInviter
+      : DEFAULT_INVITE_CONFIG.quotaForInviter,
+  };
+};
+
 export const normalizeSystemConfig = (value?: Partial<SystemConfig> | null): SystemConfig => {
   return {
     displayDecimals: normalizeBillingDisplayDecimals(value?.displayDecimals),
     adminSecurity: normalizeAdminSecurityConfig(value?.adminSecurity),
     apiDocs: normalizeApiDocsConfig(value?.apiDocs),
+    invite: normalizeInviteConfig(value?.invite),
   };
 };
 

@@ -448,7 +448,11 @@
     "displayPrecisionDesc": "頁面顯示金額保留 {{decimals}} 位小數，示例：${{example}}",
     "apiDocs": "開啟介面文件",
     "apiDocsDesc": "開啟後自動暴露 Swagger、ReDoc 與 OpenAPI JSON；關閉後對應路由會直接返回 404。",
-    "configSaved": "系統設定已儲存"
+    "configSaved": "系統設定已儲存",
+    "invite": "邀請返利",
+    "inviteDesc": "用戶註冊時雙方獲得額度獎勵",
+    "inviteeQuota": "被邀請人獲贈額度",
+    "inviterQuota": "邀請人返利額度"
   },
   "notFound": {
     "title": "頁面不存在",
@@ -527,7 +531,10 @@
     "redeemTitle": "兌換碼充值",
     "redeemPlaceholder": "輸入兌換碼 (如 XXXX-XXXX-XXXX-XXXX)",
     "redeem": "兌換",
-    "redeemed": "兌換成功"
+    "redeemed": "兌換成功",
+    "inviteTitle": "邀請返利",
+    "inviteDesc": "分享您的邀請碼給朋友，朋友註冊時雙方均可獲得額度獎勵",
+    "inviteNone": "暫未獲取邀請碼"
   },
   "redemptions": {
     "title": "兌換碼",

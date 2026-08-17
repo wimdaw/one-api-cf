@@ -11,6 +11,7 @@ import {
   BillingConfig,
   SystemConfig,
   AdminLoginResponse,
+  UserSelfInfo,
   UsageLogFilters,
   UsageLogSearchData,
 } from '@/types'
@@ -409,6 +410,11 @@ export const apiClient = {
       method: 'GET',
     }, {
       skipUnauthorizedHandler: true,
+    }),
+
+  getUserProfile: () =>
+    request<ApiResponse<UserSelfInfo & { aff_code?: string; inviter_id?: number | null }>>('/api/user/profile', {
+      method: 'GET',
     }),
 
   listUsers: () =>

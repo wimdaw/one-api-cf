@@ -4,7 +4,20 @@ import { CONSTANTS } from "../constants";
 import { getSetting, saveSetting } from "../utils";
 import { sanitizeChannelConfig } from "../channel-config";
 import { seedFreeChannels } from "../seed-free-channels";
-import { hashPassword, ROLE_ROOT, STATUS_ENABLED } from "../user/auth";
+import { hashPassword, ROLE_ROOT, STATUS_ENABLED, generateAffCode } from "../user/auth";
+
+// 给 users 表补 aff_code 列 (邀请码, 旧库无此列)
+async function ensureUsersAffCodeColumn(c: Context<HonoCustomType>): Promise<void> {
+  const tableInfo = await c.env.DB.prepare(
+    `PRAGMA table_info(users)`
+  ).all<{ name: string }>();
+  const hasAffCode = (tableInfo.results || []).some((col) => col.name === "aff_code");
+  if (!hasAffCode) {
+    await c.env.DB.prepare(
+      `ALTER TABLE users ADD COLUMN aff_code TEXT`
+    ).run();
+  }
+}
 
 // 给已有的 admin_session 表补 user_id 列 (旧库无此列, CREATE TABLE IF NOT EXISTS 不会修改旧表)
 async function ensureAdminSessionUserIdColumn(c: Context<HonoCustomType>): Promise<void> {
@@ -35,11 +48,12 @@ async function seedDefaultAdmin(c: Context<HonoCustomType>): Promise<void> {
   const password = (c.env.ADMIN_PASSWORD as string) || c.env.ADMIN_TOKEN || "admin";
   const { hash, salt } = await hashPassword(password);
   const storedHash = `${salt}:${hash}`;
+  const affCode = generateAffCode();
 
   await c.env.DB.prepare(
-    `INSERT INTO users (username, password_hash, display_name, role, status, quota, used_quota)
-     VALUES (?, ?, 'Administrator', ?, ?, -1, 0)`
-  ).bind(username, storedHash, ROLE_ROOT, STATUS_ENABLED).run();
+    `INSERT INTO users (username, password_hash, display_name, role, status, quota, used_quota, aff_code)
+     VALUES (?, ?, 'Administrator', ?, ?, -1, 0, ?)`
+  ).bind(username, storedHash, ROLE_ROOT, STATUS_ENABLED, affCode).run();
 }
 
 const DB_INIT_QUERIES = `
@@ -106,6 +120,7 @@ CREATE TABLE IF NOT EXISTS users (
     quota REAL DEFAULT 0,
     used_quota REAL DEFAULT 0,
     inviter_id INTEGER,
+    aff_code TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -382,6 +397,9 @@ const dbOperations = {
 
         // 列迁移: 给已有的 admin_session 表补 user_id 列 (CREATE TABLE IF NOT EXISTS 不会改旧表)
         await ensureAdminSessionUserIdColumn(c);
+
+        // 列迁移: 给 users 表补 aff_code 列 (邀请码)
+        await ensureUsersAffCodeColumn(c);
 
         // Seed 默认免费渠道(OpenCode + Kilo Gateway)与默认管理员账号。
         // 移动到 version 检查之前: 老库(version 已最新)也能补齐种子 (均幂等)。

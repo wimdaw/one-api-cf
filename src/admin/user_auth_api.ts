@@ -2,6 +2,8 @@ import { Context } from "hono";
 import { z } from "zod";
 import {
     findUserByUsername,
+    generateAffCode,
+    getInviteQuotas,
     hashPassword,
     isEnabled,
     ROLE_USER,
@@ -21,7 +23,7 @@ const registerSchema = z.object({
     username: z.string().trim().min(3).max(20),
     password: z.string().min(6).max(64),
     display_name: z.string().trim().max(30).optional().default(""),
-    inviter_id: z.number().int().optional(),
+    inviter_code: z.string().trim().optional(),
 });
 
 export const UserRegisterEndpoint = {
@@ -31,21 +33,56 @@ export const UserRegisterEndpoint = {
         if (!parsed.success) {
             return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400);
         }
-        const { username, password, display_name, inviter_id } = parsed.data;
+        const { username, password, display_name, inviter_code } = parsed.data;
 
         const existing = await findUserByUsername(c, username);
         if (existing) {
             return c.json({ success: false, error: "Username already exists" }, 409);
         }
 
+        // 邀请码: 根据邀请码找到邀请者
+        let inviterId: number | null = null;
+        if (inviter_code) {
+            const inviter = await c.env.DB.prepare(
+                "SELECT id FROM users WHERE aff_code = ?"
+            ).bind(inviter_code.trim().toUpperCase()).first<{ id: number }>();
+            if (inviter) {
+                inviterId = inviter.id;
+            }
+        }
+
         const { hash, salt } = await hashPassword(password);
         const storedHash = `${salt}:${hash}`;
-        const result = await c.env.DB.prepare(
-            `INSERT INTO users (username, password_hash, display_name, role, status, quota, used_quota, inviter_id)
-             VALUES (?, ?, ?, ?, ?, 0, 0, ?)`
-        ).bind(username, storedHash, display_name, ROLE_USER, STATUS_ENABLED, inviter_id ?? null).run();
+        const affCode = generateAffCode();
 
-        return c.json({ success: true, data: { changes: result.meta?.changes } });
+        // 注册返利额度
+        const { quotaForInvitee, quotaForInviter } = await getInviteQuotas(c);
+        const inviteeQuota = inviterId ? quotaForInvitee : 0;
+
+        const result = await c.env.DB.prepare(
+            `INSERT INTO users (username, password_hash, display_name, role, status, quota, used_quota, inviter_id, aff_code)
+             VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`
+        ).bind(username, storedHash, display_name, ROLE_USER, STATUS_ENABLED, inviteeQuota, inviterId, affCode).run();
+
+        // 邀请者返利
+        if (inviterId && quotaForInviter > 0) {
+            await c.env.DB.prepare(
+                `UPDATE users
+                 SET quota = CASE WHEN quota = -1 THEN -1 ELSE quota + ? END,
+                     updated_at = datetime('now')
+                 WHERE id = ?`
+            ).bind(quotaForInviter, inviterId).run();
+        }
+
+        return c.json({
+            success: true,
+            data: {
+                changes: result.meta?.changes,
+                aff_code: affCode,
+                inviter_id: inviterId,
+                quota: inviteeQuota,
+            },
+        });
     },
 };
 

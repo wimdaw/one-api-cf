@@ -448,7 +448,11 @@
     "displayPrecisionDesc": "页面显示金额保留 {{decimals}} 位小数，示例：${{example}}",
     "apiDocs": "开启接口文档",
     "apiDocsDesc": "开启后自动暴露 Swagger、ReDoc 与 OpenAPI JSON；关闭后对应路由会直接返回 404。",
-    "configSaved": "系统设置已保存"
+    "configSaved": "系统设置已保存",
+    "invite": "邀请返利",
+    "inviteDesc": "用户注册时双方获得额度奖励",
+    "inviteeQuota": "被邀请人获赠额度",
+    "inviterQuota": "邀请人返利额度"
   },
   "notFound": {
     "title": "页面不存在",
@@ -527,7 +531,10 @@
     "redeemTitle": "兑换码充值",
     "redeemPlaceholder": "输入兑换码 (如 XXXX-XXXX-XXXX-XXXX)",
     "redeem": "兑换",
-    "redeemed": "兑换成功"
+    "redeemed": "兑换成功",
+    "inviteTitle": "邀请返利",
+    "inviteDesc": "分享你的邀请码给朋友，朋友注册时双方均可获得额度奖励",
+    "inviteNone": "暂未获取邀请码"
   },
   "redemptions": {
     "title": "兑换码",

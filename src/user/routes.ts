@@ -43,6 +43,8 @@ async function myProfile(c: Context<HonoCustomType>) {
             quota: user.quota,
             used_quota: user.used_quota,
             balance: Math.max(0, user.quota - user.used_quota),
+            aff_code: user.aff_code || "",
+            inviter_id: user.inviter_id,
         },
     });
 }

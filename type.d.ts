@@ -148,6 +148,12 @@ type ApiDocsConfig = {
 type SystemConfig = BillingConfig & {
     adminSecurity: AdminSecurityConfig;
     apiDocs: ApiDocsConfig;
+    invite: InviteConfig;
+}
+
+type InviteConfig = {
+    quotaForInvitee: number;
+    quotaForInviter: number;
 }
 
 type ApiTokenData = {

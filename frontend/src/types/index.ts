@@ -58,6 +58,12 @@ export interface ApiDocsConfig {
 export interface SystemConfig extends BillingConfig {
   adminSecurity: AdminSecurityConfig
   apiDocs: ApiDocsConfig
+  invite: InviteConfig
+}
+
+export interface InviteConfig {
+  quotaForInvitee: number
+  quotaForInviter: number
 }
 
 export interface AdminLoginResponse {

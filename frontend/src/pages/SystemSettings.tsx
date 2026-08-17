@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { BILLING_CONFIG_QUERY_KEY } from "@/hooks/use-billing-config";
@@ -434,6 +435,40 @@ export function SystemSettings() {
               ))}
             </div>
           ) : null}
+        </section>
+
+        {/* 邀请返利设置 */}
+        <section className="space-y-4">
+          <div>
+            <h3 className="font-bold tracking-tight">{t('settings.invite')}</h3>
+            <p className="text-sm text-muted-foreground">{t('settings.inviteDesc')}</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{t('settings.inviteeQuota')}</Label>
+              <Input
+                type="number"
+                min={0}
+                value={normalizedSystemConfig.invite?.quotaForInvitee ?? 0}
+                onChange={(e) => setSystemConfig((current) => ({
+                  ...current,
+                  invite: { ...current.invite, quotaForInvitee: Number(e.target.value) || 0 },
+                }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('settings.inviterQuota')}</Label>
+              <Input
+                type="number"
+                min={0}
+                value={normalizedSystemConfig.invite?.quotaForInviter ?? 0}
+                onChange={(e) => setSystemConfig((current) => ({
+                  ...current,
+                  invite: { ...current.invite, quotaForInviter: Number(e.target.value) || 0 },
+                }))}
+              />
+            </div>
+          </div>
         </section>
       </Card>
     </PageContainer>

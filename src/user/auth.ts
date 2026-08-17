@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { getSystemConfig } from "../system-config";
 
 // ---------------------------------------------------------------------------
 // 用户认证核心 (one-api 移植, 保持现有风格)
@@ -24,6 +25,7 @@ export type UserRow = {
     quota: number;
     used_quota: number;
     inviter_id: number | null;
+    aff_code: string | null;
     created_at: string;
     updated_at: string;
 };
@@ -99,3 +101,27 @@ export async function getBalance(c: Context<HonoCustomType>, user: UserRow): Pro
 export const isAdmin = (user: Pick<UserRow, "role">): boolean => user.role >= ROLE_ADMIN;
 
 export const isEnabled = (user: Pick<UserRow, "status">): boolean => user.status === STATUS_ENABLED;
+
+// ---------- 邀请码 / 返利 ----------
+const AFF_CODE_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+export function generateAffCode(): string {
+    let code = "";
+    for (let i = 0; i < 8; i += 1) {
+        code += AFF_CODE_CHARSET[Math.floor(Math.random() * AFF_CODE_CHARSET.length)];
+    }
+    return code;
+}
+
+// 返回: { quotaForInvitee, quotaForInviter } (来自系统配置)
+export async function getInviteQuotas(c: Context<HonoCustomType>): Promise<{ quotaForInvitee: number; quotaForInviter: number }> {
+    try {
+        const cfg = await getSystemConfig(c);
+        return {
+            quotaForInvitee: cfg?.invite?.quotaForInvitee || 0,
+            quotaForInviter: cfg?.invite?.quotaForInviter || 0,
+        };
+    } catch {
+        return { quotaForInvitee: 0, quotaForInviter: 0 };
+    }
+}

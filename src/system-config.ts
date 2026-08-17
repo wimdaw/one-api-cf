@@ -19,10 +19,16 @@ export const DEFAULT_API_DOCS_CONFIG: ApiDocsConfig = {
     enabled: true,
 };
 
+export const DEFAULT_INVITE_CONFIG: InviteConfig = {
+    quotaForInvitee: 0,
+    quotaForInviter: 0,
+};
+
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
     displayDecimals: DEFAULT_BILLING_DISPLAY_DECIMALS,
     adminSecurity: DEFAULT_ADMIN_SECURITY_CONFIG,
     apiDocs: DEFAULT_API_DOCS_CONFIG,
+    invite: DEFAULT_INVITE_CONFIG,
 };
 
 const normalizeBoolean = (value: unknown, fallback = false): boolean => {
@@ -89,6 +95,18 @@ export const normalizeApiDocsConfig = (
     };
 };
 
+const normalizeInviteConfig = (value: Partial<InviteConfig> | undefined): InviteConfig => {
+    const v = value ?? {};
+    const num = (x: unknown) => {
+        const n = typeof x === "number" ? x : Number(x);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+    };
+    return {
+        quotaForInvitee: num(v.quotaForInvitee ?? DEFAULT_INVITE_CONFIG.quotaForInvitee),
+        quotaForInviter: num(v.quotaForInviter ?? DEFAULT_INVITE_CONFIG.quotaForInviter),
+    };
+};
+
 export const normalizeSystemConfig = (
     value: Partial<SystemConfig> | null | undefined
 ): SystemConfig => {
@@ -96,6 +114,7 @@ export const normalizeSystemConfig = (
         displayDecimals: normalizeBillingDisplayDecimals(value?.displayDecimals),
         adminSecurity: normalizeAdminSecurityConfig(value?.adminSecurity),
         apiDocs: normalizeApiDocsConfig(value?.apiDocs),
+        invite: normalizeInviteConfig(value?.invite),
     };
 };
 
