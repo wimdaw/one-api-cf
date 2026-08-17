@@ -121,7 +121,9 @@ const writeLocalDbDataPoint = (
 
     const db = (c.env.DB as any);
     try {
-        db.prepare(insertSql).bind(
+        // Workers 环境下响应返回后会冻结事件循环, 必须用 waitUntil 挂起异步 D1 写入,
+        // 否则用量记录会在请求结束后被丢弃 (表现为调用成功但看板为空)。
+        const writePromise = db.prepare(insertSql).bind(
             timestamp,
             blobValue(0),   // routeId
             (point.indexes && point.indexes[0]) || "",
@@ -158,6 +160,11 @@ const writeLocalDbDataPoint = (
         ).run().catch((error: unknown) => {
             console.error("Failed to write local usage record:", error);
         });
+
+        const executionCtx = (c as any).executionCtx;
+        if (executionCtx && typeof executionCtx.waitUntil === "function") {
+            executionCtx.waitUntil(writePromise);
+        }
     } catch (error) {
         console.error("Failed to write local usage record:", error);
     }
