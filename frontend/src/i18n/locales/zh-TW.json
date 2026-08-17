@@ -548,7 +548,15 @@
     "redeemed": "兌換成功",
     "inviteTitle": "邀請返利",
     "inviteDesc": "分享您的邀請碼給朋友，朋友註冊時雙方均可獲得額度獎勵",
-    "inviteNone": "暫未獲取邀請碼"
+    "inviteNone": "暫未獲取邀請碼",
+    "oldPassword": "當前密碼",
+    "oldPasswordPlaceholder": "修改密碼需輸入當前密碼",
+    "myUsageStats": "我的調用統計",
+    "reqTotal": "總請求",
+    "reqSuccess": "成功請求",
+    "tokensUsed": "使用 Tokens",
+    "costTotal": "總成本",
+    "byModel": "按模型"
   },
   "redemptions": {
     "title": "兌換碼",

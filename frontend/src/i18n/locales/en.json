@@ -548,7 +548,15 @@
     "redeemed": "Redeemed",
     "inviteTitle": "Invite & Earn",
     "inviteDesc": "Share your invite code - both you and your friend earn quota on signup",
-    "inviteNone": "Invite code not available"
+    "inviteNone": "Invite code not available",
+    "oldPassword": "Current Password",
+    "oldPasswordPlaceholder": "Required to change password",
+    "myUsageStats": "My Usage",
+    "reqTotal": "Total Requests",
+    "reqSuccess": "Successful",
+    "tokensUsed": "Tokens Used",
+    "costTotal": "Total Cost",
+    "byModel": "By Model"
   },
   "redemptions": {
     "title": "Redemptions",

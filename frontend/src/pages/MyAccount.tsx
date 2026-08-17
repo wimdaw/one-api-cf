@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { copyToClipboard } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
-import { Plus, Copy, Trash2, KeyRound, Wallet, User as UserIcon, Gift } from "lucide-react";
+import { Plus, Copy, Trash2, KeyRound, Wallet, User as UserIcon, Gift, BarChart3 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface MyUsage { quota: number; used_quota: number; balance: number; total_usage: number; }
@@ -21,6 +21,7 @@ export function MyAccount() {
   const [newName, setNewName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [pwd, setPwd] = useState("");
+  const [oldPwd, setOldPwd] = useState("");
   const [displayName, setDisplayName] = useState(currentUser?.display_name || "");
 
   const { data: tokens, isLoading } = useQuery({
@@ -38,6 +39,11 @@ export function MyAccount() {
     queryFn: async () => (await apiClient.getUserProfile()).data as { aff_code?: string },
   });
 
+  const { data: dashboard } = useQuery({
+    queryKey: ["my-dashboard"],
+    queryFn: async () => (await apiClient.myDashboard()).data,
+  });
+
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["my-tokens"] }); queryClient.invalidateQueries({ queryKey: ["my-usage"] }); };
 
   const createMutation = useMutation({
@@ -51,8 +57,8 @@ export function MyAccount() {
   });
 
   const updateProfile = useMutation({
-    mutationFn: () => apiClient.updateMyProfile({ display_name: displayName, password: pwd || undefined }),
-    onSuccess: () => { setPwd(""); addToast(t("account.updated"), "success"); },
+    mutationFn: () => apiClient.updateMyProfile({ display_name: displayName, password: pwd || undefined, old_password: pwd ? oldPwd : undefined }),
+    onSuccess: () => { setPwd(""); setOldPwd(""); addToast(t("account.updated"), "success"); },
   });
 
   const [redeemCode, setRedeemCode] = useState("");
@@ -83,6 +89,47 @@ export function MyAccount() {
             <div>{t("account.username")}: {currentUser?.username}</div>
             <div>{t("account.role")}: {currentUser?.role === 100 ? t("account.roleRoot") : currentUser?.role === 10 ? t("account.roleAdmin") : t("account.roleUser")}</div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-0">
+        <CardContent className="p-5 space-y-4">
+          <h2 className="font-semibold flex items-center gap-2"><BarChart3 className="h-4 w-4" />{t("account.myUsageStats")}</h2>
+          {dashboard ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <div className="text-xs text-muted-foreground">{t("account.reqTotal")}</div>
+                  <div className="text-xl font-bold">{dashboard.total_requests}</div>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <div className="text-xs text-muted-foreground">{t("account.reqSuccess")}</div>
+                  <div className="text-xl font-bold">{dashboard.success_requests}</div>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <div className="text-xs text-muted-foreground">{t("account.tokensUsed")}</div>
+                  <div className="text-xl font-bold">{dashboard.total_tokens}</div>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <div className="text-xs text-muted-foreground">{t("account.costTotal")}</div>
+                  <div className="text-xl font-bold">{dashboard.total_cost.toFixed(4)}</div>
+                </div>
+              </div>
+              {dashboard.by_model && dashboard.by_model.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">{t("account.byModel")}</div>
+                  {dashboard.by_model.slice(0, 8).map((m) => (
+                    <div key={m.model} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground truncate">{m.model}</span>
+                      <span className="shrink-0">{m.count} · {m.tokens}t</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -165,6 +212,10 @@ export function MyAccount() {
             <div className="space-y-2">
               <Label>{t("account.displayName")}</Label>
               <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("account.oldPassword")}</Label>
+              <Input type="password" placeholder={t("account.oldPasswordPlaceholder")} value={oldPwd} onChange={(e) => setOldPwd(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>{t("account.newPassword")}</Label>

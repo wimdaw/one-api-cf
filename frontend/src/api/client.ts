@@ -469,7 +469,14 @@ export const apiClient = {
   myUsage: () =>
     request<ApiResponse<{ quota: number; used_quota: number; balance: number; total_usage: number }>>('/api/user/usage', { method: 'GET' }),
 
-  updateMyProfile: (data: { display_name?: string; password?: string }) =>
+  myDashboard: () =>
+    request<ApiResponse<{
+      total_requests: number; success_requests: number; total_tokens: number; total_cost: number;
+      by_model: { model: string; count: number; tokens: number }[];
+      trend: { day: string; count: number; tokens: number }[];
+    }>>('/api/user/dashboard', { method: 'GET' }),
+
+  updateMyProfile: (data: { display_name?: string; password?: string; old_password?: string }) =>
     request<ApiResponse<unknown>>('/api/user/profile', {
       method: 'PUT',
       body: JSON.stringify(data),

@@ -548,7 +548,15 @@
     "redeemed": "兑换成功",
     "inviteTitle": "邀请返利",
     "inviteDesc": "分享你的邀请码给朋友，朋友注册时双方均可获得额度奖励",
-    "inviteNone": "暂未获取邀请码"
+    "inviteNone": "暂未获取邀请码",
+    "oldPassword": "当前密码",
+    "oldPasswordPlaceholder": "修改密码需输入当前密码",
+    "myUsageStats": "我的调用统计",
+    "reqTotal": "总请求",
+    "reqSuccess": "成功请求",
+    "tokensUsed": "使用 Tokens",
+    "costTotal": "总成本",
+    "byModel": "按模型"
   },
   "redemptions": {
     "title": "兑换码",
