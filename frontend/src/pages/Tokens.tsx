@@ -438,9 +438,11 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
               {filteredData?.map((token) => {
                 const config = typeof token.value === "string" ? JSON.parse(token.value) : token.value;
                 const channelKeys = config.channel_keys || [];
-                // 覆盖全部渠道判断: channel_keys 为空(全部) 或 勾选数 >= 系统全量渠道数
+                // 覆盖全部渠道判断: channel_keys 为空(全部) 或 选中的 key 与全部渠道 key 完全一致
                 const coversAllChannels = channelKeys.length === 0
-                  || (availableChannels.length > 0 && channelKeys.length >= availableChannels.length);
+                  || (availableChannels.length > 0
+                    && channelKeys.length >= availableChannels.length
+                    && channelKeys.every((k: string) => availableChannels.includes(k)));
                 const usedQuota = token.usage || 0;
                 const totalQuota = normalizeTokenQuota(config.total_quota);
                 const availableQuota = isUnlimitedTokenQuota(totalQuota)
