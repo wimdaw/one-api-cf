@@ -33,7 +33,9 @@ export function formatCurrency(
   value: number,
   displayDecimals = DEFAULT_BILLING_DISPLAY_DECIMALS,
 ): string {
-  const decimals = normalizeBillingDisplayDecimals(displayDecimals)
+  // 兜底: displayDecimals=0 会导致所有 <$1 的成本被归零(如 $0.106 -> $0)。
+  // 这是异常配置, 看板/成本类金额至少应保留 2 位小数展示。
+  const decimals = Math.max(2, normalizeBillingDisplayDecimals(displayDecimals))
   const normalizedValue = rawBillingToUsd(value)
   const safeValue = Math.abs(normalizedValue) < 10 ** -decimals ? 0 : normalizedValue
   return `$${safeValue.toFixed(decimals)}`
