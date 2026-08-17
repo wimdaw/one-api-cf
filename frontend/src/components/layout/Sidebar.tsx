@@ -217,7 +217,7 @@ export function Sidebar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <a
-                  href="https://github.com/Tokinx/one-api-workers"
+                  href="https://github.com/wimdaw/one-api-cf"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="GitHub"
