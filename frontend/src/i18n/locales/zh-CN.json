@@ -452,7 +452,16 @@
     "invite": "邀请返利",
     "inviteDesc": "用户注册时双方获得额度奖励",
     "inviteeQuota": "被邀请人获赠额度",
-    "inviterQuota": "邀请人返利额度"
+    "inviterQuota": "邀请人返利额度",
+    "website": "网站设置",
+    "websiteDesc": "配置首页展示的站点名称、Logo 与文案",
+    "systemName": "站点名称",
+    "logo": "Logo 地址",
+    "logoPlaceholder": "https://.../logo.png",
+    "homeContent": "首页描述",
+    "homeContentPlaceholder": "首页主标题下方的介绍文字",
+    "footer": "页脚文案",
+    "footerPlaceholder": "页脚显示的文字"
   },
   "notFound": {
     "title": "页面不存在",

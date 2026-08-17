@@ -66,6 +66,7 @@ const PUBLIC_AUTH_ROUTES = new Set([
     "/api/admin/auth/verify",
     "/api/admin/user/register",
     "/api/admin/user/login",
+    "/api/system/config",
 ]);
 
 app.use('/api/admin/*', async (c, next) => {
@@ -176,3 +177,14 @@ registerUserApi(app)
 app.get("/api/admin/redemption", RedemptionListEndpoint.handler)
 app.post("/api/admin/redemption", RedemptionCreateEndpoint.handler)
 app.delete("/api/admin/redemption/:id", RedemptionDeleteEndpoint.handler)
+
+// 公开网站配置 (未登录可读, 用于首页展示站名/Logo)
+app.get("/api/system/config", async (c) => {
+    const systemConfig = await getSystemConfig(c);
+    return c.json({
+        success: true,
+        data: {
+            website: systemConfig.website || {},
+        },
+    });
+})

@@ -389,6 +389,10 @@ export const apiClient = {
   // Auth check
   checkAuth: () => request<ApiResponse>('/api/admin/channel', { method: 'GET' }),
 
+  // 公开网站配置 (未登录可读)
+  getPublicSystemConfig: () =>
+    request<ApiResponse<{ website?: { systemName?: string; logo?: string; footer?: string; homeContent?: string } }>>('/api/system/config', { method: 'GET' }),
+
   // User login (username + password, one-api style)
   userLogin: (username: string, password: string) =>
     request<ApiResponse<AdminLoginResponse>>('/api/admin/user/login', {

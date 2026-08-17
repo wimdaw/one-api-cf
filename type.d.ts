@@ -149,11 +149,19 @@ type SystemConfig = BillingConfig & {
     adminSecurity: AdminSecurityConfig;
     apiDocs: ApiDocsConfig;
     invite: InviteConfig;
+    website: WebsiteConfig;
 }
 
 type InviteConfig = {
     quotaForInvitee: number;
     quotaForInviter: number;
+}
+
+type WebsiteConfig = {
+    systemName: string;
+    logo: string;
+    footer: string;
+    homeContent: string;
 }
 
 type ApiTokenData = {

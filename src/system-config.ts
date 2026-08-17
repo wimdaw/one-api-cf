@@ -24,11 +24,19 @@ export const DEFAULT_INVITE_CONFIG: InviteConfig = {
     quotaForInviter: 0,
 };
 
+export const DEFAULT_WEBSITE_CONFIG: WebsiteConfig = {
+    systemName: "AI Gateway",
+    logo: "",
+    footer: "",
+    homeContent: "",
+};
+
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
     displayDecimals: DEFAULT_BILLING_DISPLAY_DECIMALS,
     adminSecurity: DEFAULT_ADMIN_SECURITY_CONFIG,
     apiDocs: DEFAULT_API_DOCS_CONFIG,
     invite: DEFAULT_INVITE_CONFIG,
+    website: DEFAULT_WEBSITE_CONFIG,
 };
 
 const normalizeBoolean = (value: unknown, fallback = false): boolean => {
@@ -107,6 +115,16 @@ const normalizeInviteConfig = (value: Partial<InviteConfig> | undefined): Invite
     };
 };
 
+const normalizeWebsiteConfig = (value: Partial<WebsiteConfig> | undefined): WebsiteConfig => {
+    const v = value ?? {};
+    return {
+        systemName: typeof v.systemName === "string" && v.systemName.trim() ? v.systemName.trim() : DEFAULT_WEBSITE_CONFIG.systemName,
+        logo: typeof v.logo === "string" ? v.logo.trim() : "",
+        footer: typeof v.footer === "string" ? v.footer.trim() : "",
+        homeContent: typeof v.homeContent === "string" ? v.homeContent.trim() : "",
+    };
+};
+
 export const normalizeSystemConfig = (
     value: Partial<SystemConfig> | null | undefined
 ): SystemConfig => {
@@ -115,6 +133,7 @@ export const normalizeSystemConfig = (
         adminSecurity: normalizeAdminSecurityConfig(value?.adminSecurity),
         apiDocs: normalizeApiDocsConfig(value?.apiDocs),
         invite: normalizeInviteConfig(value?.invite),
+        website: normalizeWebsiteConfig(value?.website),
     };
 };
 

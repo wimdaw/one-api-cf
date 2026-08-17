@@ -452,7 +452,16 @@
     "invite": "Invite & Earn",
     "inviteDesc": "Both parties earn quota when a user registers",
     "inviteeQuota": "Invitee bonus quota",
-    "inviterQuota": "Inviter reward quota"
+    "inviterQuota": "Inviter reward quota",
+    "website": "Website",
+    "websiteDesc": "Configure the site name, logo and homepage text",
+    "systemName": "Site Name",
+    "logo": "Logo URL",
+    "logoPlaceholder": "https://.../logo.png",
+    "homeContent": "Homepage Description",
+    "homeContentPlaceholder": "Intro text under the homepage title",
+    "footer": "Footer",
+    "footerPlaceholder": "Text shown in the footer"
   },
   "notFound": {
     "title": "Page Not Found",

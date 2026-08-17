@@ -3,10 +3,20 @@ import { Globe, Gauge, BarChart3, Shield, Zap, ArrowRight, Sparkles } from "luci
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/api/client";
 
 export function Dashboard() {
   const { t } = useTranslation();
   const { openAuthModal } = useAuthStore();
+
+  const { data: pubConfig } = useQuery({
+    queryKey: ["public-system-config"],
+    queryFn: async () => (await apiClient.getPublicSystemConfig()).data,
+  });
+  const website = pubConfig?.website;
+  const heroTitle = website?.systemName?.trim() || t('dashboard.heroTitle');
+  const heroDesc = website?.homeContent?.trim() || t('dashboard.heroDescription');
 
   const features = [
     {
@@ -62,11 +72,11 @@ export function Dashboard() {
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight leading-[1.1] mb-5">
               <span className="bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
-                {t('dashboard.heroTitle')}
+                {heroTitle}
               </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl whitespace-pre-line">
-              {t('dashboard.heroDescription')}
+              {heroDesc}
             </p>
             <div className="flex flex-wrap gap-3">
               <Button

@@ -452,7 +452,16 @@
     "invite": "邀請返利",
     "inviteDesc": "用戶註冊時雙方獲得額度獎勵",
     "inviteeQuota": "被邀請人獲贈額度",
-    "inviterQuota": "邀請人返利額度"
+    "inviterQuota": "邀請人返利額度",
+    "website": "網站設定",
+    "websiteDesc": "設定首頁顯示的站點名稱、Logo 與文案",
+    "systemName": "站點名稱",
+    "logo": "Logo 位址",
+    "logoPlaceholder": "https://.../logo.png",
+    "homeContent": "首頁描述",
+    "homeContentPlaceholder": "首頁主標題下方的介紹文字",
+    "footer": "頁尾文案",
+    "footerPlaceholder": "頁尾顯示的文字"
   },
   "notFound": {
     "title": "頁面不存在",

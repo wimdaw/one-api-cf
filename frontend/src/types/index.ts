@@ -59,11 +59,19 @@ export interface SystemConfig extends BillingConfig {
   adminSecurity: AdminSecurityConfig
   apiDocs: ApiDocsConfig
   invite: InviteConfig
+  website: WebsiteConfig
 }
 
 export interface InviteConfig {
   quotaForInvitee: number
   quotaForInviter: number
+}
+
+export interface WebsiteConfig {
+  systemName: string
+  logo: string
+  footer: string
+  homeContent: string
 }
 
 export interface AdminLoginResponse {

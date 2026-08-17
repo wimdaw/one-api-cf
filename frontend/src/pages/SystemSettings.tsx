@@ -8,6 +8,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { BILLING_CONFIG_QUERY_KEY } from "@/hooks/use-billing-config";
@@ -468,6 +469,60 @@ export function SystemSettings() {
                 }))}
               />
             </div>
+          </div>
+        </section>
+
+        {/* 网站设置 */}
+        <section className="space-y-4">
+          <div>
+            <h3 className="font-bold tracking-tight">{t('settings.website')}</h3>
+            <p className="text-sm text-muted-foreground">{t('settings.websiteDesc')}</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>{t('settings.systemName')}</Label>
+              <Input
+                value={normalizedSystemConfig.website?.systemName ?? ""}
+                onChange={(e) => setSystemConfig((current) => ({
+                  ...current,
+                  website: { ...current.website, systemName: e.target.value },
+                }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('settings.logo')}</Label>
+              <Input
+                placeholder={t('settings.logoPlaceholder')}
+                value={normalizedSystemConfig.website?.logo ?? ""}
+                onChange={(e) => setSystemConfig((current) => ({
+                  ...current,
+                  website: { ...current.website, logo: e.target.value },
+                }))}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>{t('settings.homeContent')}</Label>
+            <Textarea
+              rows={3}
+              placeholder={t('settings.homeContentPlaceholder')}
+              value={normalizedSystemConfig.website?.homeContent ?? ""}
+              onChange={(e) => setSystemConfig((current) => ({
+                ...current,
+                website: { ...current.website, homeContent: e.target.value },
+              }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>{t('settings.footer')}</Label>
+            <Input
+              placeholder={t('settings.footerPlaceholder')}
+              value={normalizedSystemConfig.website?.footer ?? ""}
+              onChange={(e) => setSystemConfig((current) => ({
+                ...current,
+                website: { ...current.website, footer: e.target.value },
+              }))}
+            />
           </div>
         </section>
       </Card>
