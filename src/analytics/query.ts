@@ -15,7 +15,7 @@ import { t } from "../i18n";
 // 本文件仅作为兼容层, 直接转发到 db-query.ts 的查询实现。
 // ---------------------------------------------------------------------------
 
-export type AnalyticsRange = "24h" | "7d" | "30d" | "90d";
+export type AnalyticsRange = "24h" | "7d" | "30d";
 export type AnalyticsBreakdownDimension = "token" | "channel" | "model" | "provider" | "user";
 
 export type AnalyticsBreakdownData = {

@@ -143,7 +143,7 @@ export interface PricingModel {
 
 export type PricingConfig = Record<string, PricingModel>
 
-export type AnalyticsRange = '24h' | '7d' | '30d' | '90d'
+export type AnalyticsRange = '24h' | '7d' | '30d'
 export type AnalyticsBreakdownDimension = 'token' | 'channel' | 'model' | 'provider' | 'user'
 export type UsageLogFilterDimension =
   | 'route'

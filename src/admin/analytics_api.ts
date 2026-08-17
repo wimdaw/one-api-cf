@@ -15,7 +15,7 @@ import {
 } from "../analytics/query";
 import { hashTokenKey } from "../analytics/usage-logger";
 
-// 用户排行: 把 token_hash 映射为用户名 (通过 api_token.user_id -> users.username)
+// 用户排行: 把 token_hash 映射为可读归属 (优先用户名, 系统 token 用令牌名)
 async function mapTokenHashesToUsers(
     c: Context<HonoCustomType>,
     items: AnalyticsBreakdownData["items"]
@@ -25,15 +25,19 @@ async function mapTokenHashesToUsers(
             "SELECT key, value FROM api_token"
         ).all<{ key: string; value: string }>();
 
-        // token_hash -> username 映射
-        const hashToUser = new Map<string, string>();
+        // token_hash -> {"type":"user"|"token", "label":string}
+        const hashToInfo = new Map<string, { type: "user" | "token"; label: string }>();
         const userIds = new Set<number>();
         for (const row of tokenRows.results || []) {
             try {
                 const data = JSON.parse(row.value) as ApiTokenData;
+                const hash = await hashTokenKey(row.key);
                 if (data.user_id && data.user_id > 0) {
-                    hashToUser.set(await hashTokenKey(row.key), `user:${data.user_id}`);
+                    hashToInfo.set(hash, { type: "user", label: `user:${data.user_id}` });
                     userIds.add(data.user_id);
+                } else {
+                    // 管理端/系统全局 token: 显示可读令牌名而非 hash
+                    hashToInfo.set(hash, { type: "token", label: data.name?.trim() || "System token" });
                 }
             } catch {
                 // skip
@@ -53,15 +57,18 @@ async function mapTokenHashesToUsers(
         }
 
         return items.map((item) => {
-            const mapped = hashToUser.get(item.label);
-            if (mapped && mapped.startsWith("user:")) {
-                const uid = Number(mapped.slice(5));
+            const info = hashToInfo.get(item.label);
+            if (info?.type === "user") {
+                const uid = Number(info.label.slice(5));
                 const username = userMap.get(uid);
                 if (username) {
                     return { ...item, label: username };
                 }
             }
-            return { ...item, label: item.label === "" ? "anonymous" : item.label };
+            if (info?.type === "token") {
+                return { ...item, label: info.label || "System token" };
+            }
+            return { ...item, label: "Anonymous" };
         });
     } catch (error) {
         console.error("mapTokenHashesToUsers error:", error);
@@ -69,7 +76,7 @@ async function mapTokenHashesToUsers(
     }
 }
 
-const rangeSchema = z.enum(["24h", "7d", "30d", "90d"]).optional();
+const rangeSchema = z.enum(["24h", "7d", "30d"]).optional();
 type AnalyticsErrorStatus = 400 | 401 | 403 | 404 | 429 | 500 | 502 | 504;
 
 const toAnalyticsErrorStatus = (error: unknown): AnalyticsErrorStatus => {

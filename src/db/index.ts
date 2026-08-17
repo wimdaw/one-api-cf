@@ -406,6 +406,13 @@ const dbOperations = {
         await seedFreeChannels(c);
         await seedDefaultAdmin(c);
 
+        // 数据保留: 看板最多保留 30 天用量记录, 每次启动清理更早数据 (timestamp 存 UNIX 秒)。
+        // 置于 version 检查之前, 保证旧库(version 已最新)也执行清理。
+        const retentionCutoffSec = Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
+        await c.env.DB.prepare(
+            "DELETE FROM usage_record WHERE timestamp < ?"
+        ).bind(retentionCutoffSec).run();
+
         const version = await getSetting(c, CONSTANTS.DB_VERSION_KEY);
         if (version === CONSTANTS.DB_VERSION) {
             return;

@@ -40,7 +40,7 @@ const getAnalyticsTrendCacheKey = (range: AnalyticsRange): string => `analytics:
 const getAnalyticsBreakdownCacheKey = (range: AnalyticsRange, dimension: AnalyticsBreakdownDimension): string =>
   `analytics:breakdown:${range}:${dimension}`;
 
-const RANGE_VALUES: AnalyticsRange[] = ["24h", "7d", "30d", "90d"];
+const RANGE_VALUES: AnalyticsRange[] = ["24h", "7d", "30d"];
 
 const getInitialAnalyticsRange = (): AnalyticsRange => {
   const cachedRange = readScopedCache<AnalyticsRange>(ANALYTICS_RANGE_CACHE_KEY)?.data;
@@ -61,7 +61,6 @@ export function Analytics() {
     { value: "24h", label: t('analytics.range24h') },
     { value: "7d", label: t('analytics.range7d') },
     { value: "30d", label: t('analytics.range30d') },
-    { value: "90d", label: t('analytics.range90d') },
   ];
 
   const BREAKDOWN_CHARTS: Array<{
@@ -86,19 +85,28 @@ export function Analytics() {
       badgeClassName: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
     },
     {
-      dimension: "user",
-      title: t('analytics.userRanking'),
-      description: t('analytics.userRankingDesc'),
-      barClassName: "from-sky-500 to-cyan-400",
-      badgeClassName: "bg-sky-500/12 text-sky-600 dark:text-sky-400",
-    },
-    {
       dimension: "provider",
       title: t('analytics.providerRanking'),
       description: t('analytics.providerRankingDesc'),
       barClassName: "from-rose-500 to-pink-400",
       badgeClassName: "bg-rose-500/12 text-rose-600 dark:text-rose-400",
     },
+    // 管理员: 用户排行; 普通用户: 令牌排行 (位置固定在服务商之后)
+    ...(isNormalUser
+      ? [{
+          dimension: "token" as AnalyticsBreakdownDimension,
+          title: t('analytics.tokenRanking'),
+          description: t('analytics.tokenRankingDesc'),
+          barClassName: "from-sky-500 to-cyan-400",
+          badgeClassName: "bg-sky-500/12 text-sky-600 dark:text-sky-400",
+        }]
+      : [{
+          dimension: "user" as AnalyticsBreakdownDimension,
+          title: t('analytics.userRanking'),
+          description: t('analytics.userRankingDesc'),
+          barClassName: "from-sky-500 to-cyan-400",
+          badgeClassName: "bg-sky-500/12 text-sky-600 dark:text-sky-400",
+        }]),
   ];
 
   const overviewCacheEntry = useMemo(

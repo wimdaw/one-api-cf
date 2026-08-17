@@ -14,7 +14,7 @@ const getDb = (c: Context<HonoCustomType>): D1Like => {
 // timestamp 存储为 INTEGER UNIX 秒
 // ---------------------------------------------------------------------------
 
-export type AnalyticsRange = "24h" | "7d" | "30d" | "90d";
+export type AnalyticsRange = "24h" | "7d" | "30d";
 export type AnalyticsBreakdownDimension = "token" | "channel" | "model" | "provider" | "user";
 export type UsageLogFilterDimension =
     | "route" | "token" | "channel" | "model" | "provider"
@@ -37,14 +37,12 @@ const RANGE_LOOKBACK_SECONDS: Record<AnalyticsRange, number> = {
     "24h": 24 * 3600,
     "7d": 7 * 24 * 3600,
     "30d": 30 * 24 * 3600,
-    "90d": 90 * 24 * 3600,
 };
 
 const RANGE_BUCKET_SECONDS: Record<AnalyticsRange, number> = {
     "24h": 3600,
     "7d": 24 * 3600,
     "30d": 24 * 3600,
-    "90d": 24 * 3600,
 };
 
 const BREAKDOWN_COLUMNS: Record<AnalyticsBreakdownDimension, string> = {
@@ -76,7 +74,11 @@ const LOG_FILTER_COLUMNS: Record<UsageLogFilterDimension, string> = {
 };
 
 const getRange = (requested?: string): AnalyticsRange => {
-    return (requested && requested in RANGE_LOOKBACK_SECONDS ? requested : "24h") as AnalyticsRange;
+    // 数据保留上限 30 天; 请求 90d/无效值均落到 30d (90d 数据已清理)
+    if (requested === "30d") return "30d";
+    if (requested === "7d") return "7d";
+    if (requested === "24h") return "24h";
+    return "30d";
 };
 
 const normalizeTimestamps = <T>(rows: T[]): T[] => rows;
