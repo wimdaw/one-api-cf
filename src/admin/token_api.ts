@@ -65,15 +65,31 @@ export class TokenUpsertEndpoint extends OpenAPIRoute {
 
     async handle(c: Context<HonoCustomType>) {
         const body = await c.req.json<ApiTokenData>();
-        // 记录创建者: 管理员用户会话写入其 user_id; 纯 ADMIN_TOKEN 模式无 user 则 null
+        const { key } = c.req.param();
+
+        // 归属处理: 令牌已存在时保留原 user_id (编辑不转移归属);
+        // 新建时才写入当前创建者 (管理员用户会话的 id 或 null)
         const currentUser = c.get("user") as { id?: number } | null | undefined;
-        const tokenWithOwner: ApiTokenData = {
+        const existing = await c.env.DB.prepare(
+            `SELECT value FROM api_token WHERE key = ?`
+        ).bind(key).first<{ value: string }>();
+        let ownerId: number | null | undefined;
+        if (existing) {
+            try {
+                const existingData = JSON.parse(existing.value || "{}") as ApiTokenData;
+                ownerId = existingData.user_id;
+            } catch {
+                ownerId = undefined;
+            }
+        } else {
+            ownerId = currentUser?.id ?? null;
+        }
+
+        const normalizedBody: ApiTokenData = {
             ...body,
-            user_id: currentUser?.id ?? null,
+            user_id: ownerId,
             total_quota: TokenUtils.normalizeQuota(body.total_quota),
         };
-        const normalizedBody = tokenWithOwner;
-        const { key } = c.req.param();
 
         // Validate channels exist using batch query (if channel_keys is not empty)
         if (normalizedBody.channel_keys && normalizedBody.channel_keys.length > 0) {
