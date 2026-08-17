@@ -394,12 +394,12 @@ export function Tokens({ createMode = false, editRoute = false }: { createMode?:
         description={t('tokens.description')}
         actions={
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
+            </Button>
             <Button variant={showAllTokens ? "default" : "outline"} size="sm" onClick={() => setShowAllTokens(!showAllTokens)}>
               <ListFilter className="h-4 w-4" />
               <span className="hidden sm:inline ml-1">{showAllTokens ? t('tokens.myTokens') : t('tokens.allTokens')}</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-              <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
             </Button>
             <Button size="sm" onClick={handleAdd}>
               <Plus className="h-4 w-4" />
