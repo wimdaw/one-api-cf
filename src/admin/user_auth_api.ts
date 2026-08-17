@@ -139,7 +139,7 @@ export const UserLoginEndpoint = {
                 status: user.status,
                 quota: user.quota,
                 used_quota: user.used_quota,
-                balance: Math.max(0, user.quota - user.used_quota),
+                balance: user.quota === -1 ? -1 : Math.max(0, user.quota - user.used_quota),
             },
         });
     },

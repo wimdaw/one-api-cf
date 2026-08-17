@@ -95,6 +95,10 @@ export async function findUserById(c: Context<HonoCustomType>, id: number): Prom
 }
 
 export async function getBalance(c: Context<HonoCustomType>, user: UserRow): Promise<number> {
+    // quota = -1 表示无限额度, 余额为 -1 (无限); 否则取剩余
+    if (user.quota === -1) {
+        return -1;
+    }
     return Math.max(0, user.quota - user.used_quota);
 }
 

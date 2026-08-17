@@ -73,8 +73,9 @@ export const MyTokenCreateEndpoint = {
         }
 
         // 校验用户余额 (除非无限额度)
-        const balance = Math.max(0, user.quota - user.used_quota);
-        if (totalQuota !== -1 && totalQuota > balance) {
+        const isUnlimited = user.quota === -1;
+        const balance = isUnlimited ? -1 : Math.max(0, user.quota - user.used_quota);
+        if (!isUnlimited && totalQuota !== -1 && totalQuota > balance) {
             return c.json({ success: false, error: "Insufficient balance" }, 400);
         }
 

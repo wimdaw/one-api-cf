@@ -30,7 +30,7 @@ export const UserListEndpoint = {
         ).all();
         const users = (now.results || []).map((row: any) => ({
             ...row,
-            balance: Math.max(0, Number(row.quota || 0) - Number(row.used_quota || 0)),
+            balance: Number(row.quota) === -1 ? -1 : Math.max(0, Number(row.quota || 0) - Number(row.used_quota || 0)),
         }));
         return c.json({ success: true, data: { users } });
     },
@@ -164,7 +164,7 @@ export const UserSelfEndpoint = {
                 status: user.status,
                 quota: user.quota,
                 used_quota: user.used_quota,
-                balance: Math.max(0, user.quota - user.used_quota),
+                balance: user.quota === -1 ? -1 : Math.max(0, user.quota - user.used_quota),
             },
         });
     },

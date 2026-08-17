@@ -55,7 +55,7 @@ async function myProfile(c: Context<HonoCustomType>) {
             role: user.role,
             quota: user.quota,
             used_quota: user.used_quota,
-            balance: Math.max(0, user.quota - user.used_quota),
+            balance: user.quota === -1 ? -1 : Math.max(0, user.quota - user.used_quota),
             aff_code: user.aff_code || "",
             inviter_id: user.inviter_id,
         },
@@ -89,7 +89,7 @@ async function myUsage(c: Context<HonoCustomType>) {
         data: {
             quota: user.quota,
             used_quota: user.used_quota,
-            balance: Math.max(0, user.quota - user.used_quota),
+            balance: user.quota === -1 ? -1 : Math.max(0, user.quota - user.used_quota),
             total_usage: totalUsage,
             tokens: perToken,
         },

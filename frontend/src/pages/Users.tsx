@@ -159,7 +159,7 @@ export function Users() {
                       <td className="py-2 pr-4">
                         <Badge variant={u.status === STATUS_ENABLED ? "success" : "destructive"}>{statusLabel(u.status)}</Badge>
                       </td>
-                      <td className="py-2 pr-4 text-right">{u.balance.toFixed(2)}</td>
+                      <td className="py-2 pr-4 text-right">{u.balance < 0 ? t("common.unlimited") : u.balance.toFixed(2)}</td>
                       <td className="py-2 text-right whitespace-nowrap">
                         <Button variant="ghost" size="icon" className="h-7 w-7"
                           onClick={() => { setEditing(u); setForm({ username: u.username, password: "", display_name: u.display_name || "", quota: String(u.quota) }); }}
