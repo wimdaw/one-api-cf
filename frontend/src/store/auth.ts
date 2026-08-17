@@ -1,17 +1,16 @@
 import { create } from 'zustand'
 import { apiClient } from '@/api/client'
 import { clearScopedCacheByPrefix } from '@/lib/local-cache'
-import { type AdminLoginResponse } from '@/types'
+import { type UserSelfInfo } from '@/types'
 import { clearAdminCredentials } from '@/lib/admin-auth'
-import i18n from '@/i18n'
 
 interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
   showAuthModal: boolean
-  startLogin: (token: string) => Promise<AdminLoginResponse>
-  verifyLogin: (challengeId: string, code: string) => Promise<void>
+  currentUser: UserSelfInfo | null
+  login: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
   openAuthModal: () => void
@@ -23,31 +22,22 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
   error: null,
   showAuthModal: false,
+  currentUser: null,
 
-  startLogin: async (token: string) => {
+  login: async (username: string, password: string) => {
     set({ isLoading: true, error: null })
 
     try {
-      const response = await apiClient.startAdminLogin(token)
-      const loginResult = response.data as AdminLoginResponse
-
-      if (!loginResult) {
-        throw new Error(i18n.t('auth.loginResponseInvalid'))
-      }
-
+      await apiClient.userLogin(username, password)
       clearAdminCredentials()
-
-      if (!loginResult.requiresVerification) {
-        set({ isAuthenticated: true, isLoading: false, showAuthModal: false })
-        return loginResult
+      set({ isAuthenticated: true, isLoading: false, showAuthModal: false, error: null })
+      // 尝试拉取当前用户信息 (非关键, 失败不阻断)
+      try {
+        const self = await apiClient.getCurrentUser()
+        set({ currentUser: self.data as UserSelfInfo })
+      } catch {
+        // ignore
       }
-
-      if (!loginResult.challengeId) {
-        throw new Error(i18n.t('auth.loginMissingChallenge'))
-      }
-
-      set({ isAuthenticated: false, isLoading: false })
-      return loginResult
     } catch (error) {
       clearAdminCredentials()
       set({
@@ -59,33 +49,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  verifyLogin: async (challengeId: string, code: string) => {
-    set({ isLoading: true, error: null })
-
-    try {
-      const response = await apiClient.verifyAdminLogin(challengeId, code)
-      const loginResult = response.data as AdminLoginResponse
-
-      if (!loginResult || loginResult.requiresVerification) {
-        throw new Error(i18n.t('auth.verificationSessionFailed'))
-      }
-
-      clearAdminCredentials()
-      set({ isAuthenticated: true, isLoading: false, showAuthModal: false })
-    } catch (error) {
-      clearAdminCredentials()
-      set({
-        isAuthenticated: false,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Verification failed',
-      })
-      throw error
-    }
-  },
-
   logout: async () => {
     try {
-      await apiClient.logoutAdmin()
+      await apiClient.logoutUser()
     } catch {
       // ignore logout errors and clear local state anyway
     }
@@ -93,7 +59,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     clearScopedCacheByPrefix('analytics:')
     clearScopedCacheByPrefix('usage-logs:')
     clearAdminCredentials()
-    set({ isAuthenticated: false, error: null })
+    set({ isAuthenticated: false, error: null, currentUser: null })
   },
 
   checkAuth: async () => {

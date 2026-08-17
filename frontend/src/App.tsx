@@ -13,6 +13,7 @@ import { Pricing } from "./pages/Pricing";
 import { ApiTest } from "./pages/ApiTest";
 import { NotFound } from "./pages/NotFound";
 import { SystemSettings } from "./pages/SystemSettings";
+import { Users } from "./pages/Users";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -134,6 +135,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Tokens editRoute />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute>
+                  <Users />
                 </ProtectedRoute>
               }
             />

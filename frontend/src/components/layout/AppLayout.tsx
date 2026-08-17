@@ -15,10 +15,8 @@ import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/store/auth'
 import { useToast } from '@/components/ui/use-toast'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Menu, RotateCcw, Zap } from 'lucide-react'
-import { parseUtcTimestamp } from '@/lib/utils'
+import { Menu, Zap } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { getLocaleString } from '@/i18n'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -27,18 +25,14 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [adminToken, setAdminToken] = useState('')
-  const [verificationCode, setVerificationCode] = useState('')
-  const [challengeId, setChallengeId] = useState<string | null>(null)
-  const [challengeExpiresAt, setChallengeExpiresAt] = useState<string | null>(null)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
-  const [authStep, setAuthStep] = useState<'token' | 'verification'>('token')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const {
-    startLogin,
-    verifyLogin,
+    login,
     showAuthModal,
     closeAuthModal,
     isAuthenticated,
@@ -47,12 +41,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { addToast } = useToast()
 
   const resetAuthDialog = () => {
-    setAdminToken('')
-    setVerificationCode('')
-    setChallengeId(null)
-    setChallengeExpiresAt(null)
+    setUsername('')
+    setPassword('')
     setAuthError('')
-    setAuthStep('token')
     setIsSubmitting(false)
   }
 
@@ -74,27 +65,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     setIsSubmitting(true)
 
     try {
-      if (authStep === 'token') {
-        const loginResult = await startLogin(adminToken)
-
-        if (loginResult.requiresVerification) {
-          setAuthStep('verification')
-          setChallengeId(loginResult.challengeId)
-          setChallengeExpiresAt(loginResult.challengeExpiresAt)
-          setVerificationCode('')
-          addToast(t('auth.verificationSent'), 'success')
-          return
-        }
-
-        finalizeLogin()
-        return
-      }
-
-      if (!challengeId) {
-        throw new Error(t('auth.sessionMissing'))
-      }
-
-      await verifyLogin(challengeId, verificationCode)
+      await login(username.trim(), password)
       finalizeLogin()
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : t('auth.loginFailed'))
@@ -102,42 +73,6 @@ export function AppLayout({ children }: AppLayoutProps) {
       setIsSubmitting(false)
     }
   }
-
-  const handleResendVerificationCode = async () => {
-    if (!adminToken.trim()) {
-      setAuthError(t('auth.reenterToken'))
-      setAuthStep('token')
-      return
-    }
-
-    setAuthError('')
-    setIsSubmitting(true)
-
-    try {
-      const loginResult = await startLogin(adminToken)
-      if (!loginResult.requiresVerification) {
-        finalizeLogin()
-        return
-      }
-
-      setAuthStep('verification')
-      setChallengeId(loginResult.challengeId)
-      setChallengeExpiresAt(loginResult.challengeExpiresAt)
-      setVerificationCode('')
-      addToast(t('auth.verificationResent'), 'success')
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : t('auth.loginFailed'))
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const challengeExpiresText = (() => {
-    const date = challengeExpiresAt ? parseUtcTimestamp(challengeExpiresAt) : null
-    return date
-      ? date.toLocaleString(getLocaleString(), { hour12: false })
-      : ''
-  })()
 
   return (
     <div className="flex">
@@ -202,54 +137,35 @@ export function AppLayout({ children }: AppLayoutProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('auth.title')}</DialogTitle>
-            <DialogDescription>
-              {authStep === 'token'
-                ? t('auth.descToken')
-                : t('auth.descVerification')}
-            </DialogDescription>
+            <DialogDescription>{t('auth.descLogin')}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleAuthSubmit}>
             <div className="space-y-4">
-              {authStep === 'token' ? (
-                <div className="space-y-2">
-                  <Label className="block" htmlFor="adminToken">{t('auth.tokenLabel')}</Label>
-                  <Input
-                    id="adminToken"
-                    type="password"
-                    placeholder={t('auth.tokenPlaceholder')}
-                    value={adminToken}
-                    onChange={(e) => setAdminToken(e.target.value)}
-                    required
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label className="block" htmlFor="verificationCode">{t('auth.verificationLabel')}</Label>
-                  <Input
-                    id="verificationCode"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder={t('auth.verificationPlaceholder')}
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    required
-                  />
-                  <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                    <span>{challengeExpiresText ? t('auth.verificationExpiry', { time: challengeExpiresText }) : t('auth.verificationDefault')}</span>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 text-foreground hover:text-muted-foreground"
-                      onClick={handleResendVerificationCode}
-                      disabled={isSubmitting}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      {t('auth.resend')}
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label className="block" htmlFor="username">{t('auth.usernameLabel')}</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  placeholder={t('auth.usernamePlaceholder')}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="block" htmlFor="password">{t('auth.passwordLabel')}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder={t('auth.passwordPlaceholder')}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
 
               {authError && (
                 <Alert variant="destructive">
@@ -262,27 +178,13 @@ export function AppLayout({ children }: AppLayoutProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={authStep === 'verification'
-                  ? () => {
-                    setAuthStep('token')
-                    setVerificationCode('')
-                    setChallengeId(null)
-                    setChallengeExpiresAt(null)
-                    setAuthError('')
-                  }
-                  : handleCloseAuthModal}
+                onClick={handleCloseAuthModal}
                 className='mr-0'
               >
-                {authStep === 'verification' ? t('auth.backToPrevious') : t('common.cancel')}
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? authStep === 'verification'
-                    ? t('auth.verifying')
-                    : t('auth.sending')
-                  : authStep === 'verification'
-                    ? t('auth.verifyAndLogin')
-                    : t('auth.login')}
+                {isSubmitting ? t('auth.sending') : t('auth.login')}
               </Button>
             </DialogFooter>
           </form>

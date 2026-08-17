@@ -68,6 +68,30 @@ export interface AdminLoginResponse {
   sessionExpiresAt: string | null
 }
 
+export interface UserSelfInfo {
+  id: number
+  username: string
+  display_name: string
+  role: number
+  status: number
+  quota: number
+  used_quota: number
+  balance: number
+}
+
+export interface AdminUser {
+  id: number
+  username: string
+  display_name: string
+  role: number
+  status: number
+  quota: number
+  used_quota: number
+  balance: number
+  inviter_id: number | null
+  created_at: string
+}
+
 export type PricingBillingMode = 'volume' | 'request'
 
 export interface PricingModel {

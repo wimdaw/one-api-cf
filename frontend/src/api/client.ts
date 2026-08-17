@@ -388,6 +388,51 @@ export const apiClient = {
   // Auth check
   checkAuth: () => request<ApiResponse>('/api/admin/channel', { method: 'GET' }),
 
+  // User login (username + password, one-api style)
+  userLogin: (username: string, password: string) =>
+    request<ApiResponse<AdminLoginResponse>>('/api/admin/user/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+
+  logoutUser: () =>
+    request<ApiResponse<boolean>>('/api/admin/user/logout', {
+      method: 'POST',
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+
+  getCurrentUser: () =>
+    request<ApiResponse<UserSelfInfo>>('/api/admin/user/self', {
+      method: 'GET',
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+
+  listUsers: () =>
+    request<ApiResponse<{ users: AdminUser[] }>>('/api/admin/user', {
+      method: 'GET',
+    }),
+
+  createUser: (data: { username: string; password: string; display_name?: string; quota?: number }) =>
+    request<ApiResponse<{ changes: number }>>('/api/admin/user', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateUser: (id: number, data: { display_name?: string; role?: number; status?: number; quota?: number; password?: string }) =>
+    request<ApiResponse<{ changes: number }>>(`/api/admin/user/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteUser: (id: number) =>
+    request<ApiResponse<{ changes: number }>>(`/api/admin/user/${id}`, {
+      method: 'DELETE',
+    }),
+
   startAdminLogin: (token: string) =>
     request<ApiResponse<AdminLoginResponse>>('/api/admin/auth/login', {
       method: 'POST',
