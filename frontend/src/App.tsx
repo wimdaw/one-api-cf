@@ -60,15 +60,15 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function HomeRoute() {
-  const { isAuthenticated, isLoading, currentUser } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
 
   if (isLoading) {
     return null;
   }
 
   if (isAuthenticated) {
-    // 管理员进全局看板, 普通用户进个人中心
-    return <Navigate to={(currentUser?.role ?? 0) >= 10 ? "/dashboard" : "/account"} replace />;
+    // 登录用户统一进总览看板 (普通用户看自己的调用, 管理员看全局)
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Dashboard />;
@@ -99,9 +99,9 @@ function App() {
             <Route
               path="/dashboard"
               element={
-                <AdminRoute>
+                <ProtectedRoute>
                   <Analytics />
-                </AdminRoute>
+                </ProtectedRoute>
               }
             />
             <Route

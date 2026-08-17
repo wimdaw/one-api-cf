@@ -181,8 +181,8 @@ async function redeemCode(c: Context<HonoCustomType>) {
     });
 }
 
-// 我的调用看板: 统计我自己的 token 用量 (次数/成功/tokens/模型/趋势)
-async function myDashboard(c: Context<HonoCustomType>) {
+// 我的调用看板: 统计我自己的 token 用量 (与全局分析同结构, 按用户 token 过滤)
+async function myAnalytics(c: Context<HonoCustomType>) {
     const user = getCurrentUser(c);
     if (!user) {
         return c.json({ success: false, error: "Unauthorized" }, 401);
@@ -202,46 +202,22 @@ async function myDashboard(c: Context<HonoCustomType>) {
             // skip
         }
     }
-    if (hashes.length === 0) {
-        return c.json({ success: true, data: { total_requests: 0, success_requests: 0, total_tokens: 0, total_cost: 0, by_model: [], trend: [] } });
-    }
 
-    const placeholders = hashes.map(() => "?").join(",");
+    const url = new URL(c.req.url);
+    const range = url.searchParams.get("range") || "24h";
+    const dimension = url.searchParams.get("dimension") || "token";
 
-    // 总览
-    const overview = await c.env.DB.prepare(
-        `SELECT count(*) as total, SUM(CASE WHEN success_flag = 1 THEN 1 ELSE 0 END) as success,
-         COALESCE(SUM(total_tokens),0) as tokens, COALESCE(SUM(total_cost),0) as cost
-         FROM usage_record WHERE token_hash IN (${placeholders})`
-    ).bind(...hashes).first();
+    const { queryLocalUsageOverview, queryLocalUsageTrend, queryLocalUsageBreakdown } = await import("../analytics/db-query");
 
-    // 按模型分布
-    const byModel = await c.env.DB.prepare(
-        `SELECT requested_model as model, count(*) as count, COALESCE(SUM(total_tokens),0) as tokens
-         FROM usage_record WHERE token_hash IN (${placeholders})
-         GROUP BY requested_model ORDER BY count DESC LIMIT 10`
-    ).bind(...hashes).all();
-
-    // 近 7 天趋势
-    const since = Math.floor(Date.now() / 1000) - 7 * 24 * 3600;
-    const trend = await c.env.DB.prepare(
-        `SELECT date(timestamp, 'unixepoch', 'localtime') as day, count(*) as count,
-         COALESCE(SUM(total_tokens),0) as tokens
-         FROM usage_record
-         WHERE token_hash IN (${placeholders}) AND timestamp >= ?
-         GROUP BY day ORDER BY day ASC`
-    ).bind(...hashes, since).all();
+    const [overview, trend, breakdown] = await Promise.all([
+        queryLocalUsageOverview(c, range, hashes),
+        queryLocalUsageTrend(c, range, hashes),
+        queryLocalUsageBreakdown(c, range, dimension, hashes),
+    ]);
 
     return c.json({
         success: true,
-        data: {
-            total_requests: overview?.total || 0,
-            success_requests: overview?.success || 0,
-            total_tokens: overview?.tokens || 0,
-            total_cost: overview?.cost || 0,
-            by_model: byModel.results || [],
-            trend: trend.results || [],
-        },
+        data: { overview, trend, breakdown },
     });
 }
 
@@ -254,5 +230,5 @@ export function registerUserApi(app: any) {
     app.put("/api/user/profile", requireUser, updateMyProfile);
     app.get("/api/user/usage", requireUser, myUsage);
     app.post("/api/user/redeem", requireUser, redeemCode);
-    app.get("/api/user/dashboard", requireUser, myDashboard);
+    app.get("/api/user/analytics", requireUser, myAnalytics);
 }

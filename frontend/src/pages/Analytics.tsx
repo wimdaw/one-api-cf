@@ -6,6 +6,7 @@ import {
   AnalyticsBreakdownData,
   AnalyticsRange,
   AnalyticsBreakdownDimension,
+  MyAnalyticsData,
 } from "@/types";
 import { BreakdownChartCard } from "@/components/analytics/BreakdownChartCard";
 import { TrendBarChart } from "@/components/analytics/TrendBarChart";
@@ -19,6 +20,7 @@ import { cn, formatCompactNumber, formatCurrency } from "@/lib/utils";
 import { Activity, CircleDollarSign, Clock3, DatabaseZap, RefreshCw, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/store/auth";
 
 const formatPercent = (value: number): string => `${(value * 100).toFixed(1)}%`;
 
@@ -51,6 +53,9 @@ export function Analytics() {
   const [range, setRange] = useState<AnalyticsRange>(getInitialAnalyticsRange);
   const { data: billingConfig } = useBillingConfig();
   const displayDecimals = billingConfig?.displayDecimals ?? 6;
+  const { currentUser } = useAuthStore();
+  // 普通用户: 只统计自己的 token 用量; 管理员: 全局
+  const isNormalUser = (currentUser?.role ?? 0) < 10;
 
   const RANGE_OPTIONS: Array<{ value: AnalyticsRange; label: string }> = [
     { value: "24h", label: t('analytics.range24h') },
@@ -123,10 +128,12 @@ export function Analytics() {
   }, [range]);
 
   const overviewQuery = useQuery({
-    queryKey: ["analytics", "overview", range],
+    queryKey: ["analytics", "overview", range, isNormalUser ? "mine" : "global"],
     queryFn: async () => {
-      const response = await apiClient.getAnalyticsOverview(range);
-      const data = response.data as AnalyticsOverviewData;
+      const response = isNormalUser
+        ? await apiClient.myAnalytics(range, "token")
+        : await apiClient.getAnalyticsOverview(range);
+      const data = (response.data as MyAnalyticsData).overview || response.data as AnalyticsOverviewData;
       writeScopedCache(getAnalyticsOverviewCacheKey(range), data);
       return data;
     },
@@ -135,10 +142,12 @@ export function Analytics() {
   });
 
   const trendQuery = useQuery({
-    queryKey: ["analytics", "trend", range],
+    queryKey: ["analytics", "trend", range, isNormalUser ? "mine" : "global"],
     queryFn: async () => {
-      const response = await apiClient.getAnalyticsTrend(range);
-      const data = response.data as AnalyticsTrendData;
+      const response = isNormalUser
+        ? await apiClient.myAnalytics(range, "token")
+        : await apiClient.getAnalyticsTrend(range);
+      const data = (response.data as MyAnalyticsData).trend || response.data as AnalyticsTrendData;
       writeScopedCache(getAnalyticsTrendCacheKey(range), data);
       return data;
     },
@@ -147,10 +156,12 @@ export function Analytics() {
   });
 
   const tokenBreakdownQuery = useQuery({
-    queryKey: ["analytics", "breakdown", range, "token"],
+    queryKey: ["analytics", "breakdown", range, "token", isNormalUser ? "mine" : "global"],
     queryFn: async () => {
-      const response = await apiClient.getAnalyticsBreakdown(range, "token");
-      const data = response.data as AnalyticsBreakdownData;
+      const response = isNormalUser
+        ? await apiClient.myAnalytics(range, "token")
+        : await apiClient.getAnalyticsBreakdown(range, "token");
+      const data = (response.data as MyAnalyticsData).breakdown || response.data as AnalyticsBreakdownData;
       writeScopedCache(getAnalyticsBreakdownCacheKey(range, "token"), data);
       return data;
     },
@@ -159,10 +170,12 @@ export function Analytics() {
   });
 
   const channelBreakdownQuery = useQuery({
-    queryKey: ["analytics", "breakdown", range, "channel"],
+    queryKey: ["analytics", "breakdown", range, "channel", isNormalUser ? "mine" : "global"],
     queryFn: async () => {
-      const response = await apiClient.getAnalyticsBreakdown(range, "channel");
-      const data = response.data as AnalyticsBreakdownData;
+      const response = isNormalUser
+        ? await apiClient.myAnalytics(range, "channel")
+        : await apiClient.getAnalyticsBreakdown(range, "channel");
+      const data = (response.data as MyAnalyticsData).breakdown || response.data as AnalyticsBreakdownData;
       writeScopedCache(getAnalyticsBreakdownCacheKey(range, "channel"), data);
       return data;
     },
@@ -171,10 +184,12 @@ export function Analytics() {
   });
 
   const modelBreakdownQuery = useQuery({
-    queryKey: ["analytics", "breakdown", range, "model"],
+    queryKey: ["analytics", "breakdown", range, "model", isNormalUser ? "mine" : "global"],
     queryFn: async () => {
-      const response = await apiClient.getAnalyticsBreakdown(range, "model");
-      const data = response.data as AnalyticsBreakdownData;
+      const response = isNormalUser
+        ? await apiClient.myAnalytics(range, "model")
+        : await apiClient.getAnalyticsBreakdown(range, "model");
+      const data = (response.data as MyAnalyticsData).breakdown || response.data as AnalyticsBreakdownData;
       writeScopedCache(getAnalyticsBreakdownCacheKey(range, "model"), data);
       return data;
     },
@@ -183,10 +198,12 @@ export function Analytics() {
   });
 
   const providerBreakdownQuery = useQuery({
-    queryKey: ["analytics", "breakdown", range, "provider"],
+    queryKey: ["analytics", "breakdown", range, "provider", isNormalUser ? "mine" : "global"],
     queryFn: async () => {
-      const response = await apiClient.getAnalyticsBreakdown(range, "provider");
-      const data = response.data as AnalyticsBreakdownData;
+      const response = isNormalUser
+        ? await apiClient.myAnalytics(range, "provider")
+        : await apiClient.getAnalyticsBreakdown(range, "provider");
+      const data = (response.data as MyAnalyticsData).breakdown || response.data as AnalyticsBreakdownData;
       writeScopedCache(getAnalyticsBreakdownCacheKey(range, "provider"), data);
       return data;
     },

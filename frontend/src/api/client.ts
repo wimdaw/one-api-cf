@@ -12,6 +12,7 @@ import {
   SystemConfig,
   AdminLoginResponse,
   UserSelfInfo,
+  MyAnalyticsData,
   UsageLogFilters,
   UsageLogSearchData,
 } from '@/types'
@@ -470,11 +471,10 @@ export const apiClient = {
     request<ApiResponse<{ quota: number; used_quota: number; balance: number; total_usage: number }>>('/api/user/usage', { method: 'GET' }),
 
   myDashboard: () =>
-    request<ApiResponse<{
-      total_requests: number; success_requests: number; total_tokens: number; total_cost: number;
-      by_model: { model: string; count: number; tokens: number }[];
-      trend: { day: string; count: number; tokens: number }[];
-    }>>('/api/user/dashboard', { method: 'GET' }),
+    request<ApiResponse<MyAnalyticsData>>('/api/user/analytics?range=24h', { method: 'GET' }),
+
+  myAnalytics: (range: string, dimension: string) =>
+    request<ApiResponse<MyAnalyticsData>>(`/api/user/analytics?range=${encodeURIComponent(range)}&dimension=${encodeURIComponent(dimension)}`, { method: 'GET' }),
 
   updateMyProfile: (data: { display_name?: string; password?: string; old_password?: string }) =>
     request<ApiResponse<unknown>>('/api/user/profile', {

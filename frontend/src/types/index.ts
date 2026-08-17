@@ -114,6 +114,12 @@ export interface MyToken {
   created_at: string
 }
 
+export interface MyAnalyticsData {
+  overview: AnalyticsOverviewData
+  trend: AnalyticsTrendData
+  breakdown: AnalyticsBreakdownData
+}
+
 export interface RedemptionItem {
   id: number
   code: string

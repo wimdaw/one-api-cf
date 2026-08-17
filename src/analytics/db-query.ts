@@ -94,6 +94,16 @@ const toIsoTimestamp = (value: unknown): string => {
     return secs > 0 ? new Date(secs * 1000).toISOString() : "";
 };
 
+
+// 构建 token 过滤子句 (动态 IN 占位符, 兼容 SQLite/MySQL/PG)
+const buildTokenFilter = (tokenHashes?: string[]): { clause: string; params: number[] } => {
+    if (!tokenHashes || tokenHashes.length === 0) {
+        return { clause: "", params: [] };
+    }
+    const placeholders = tokenHashes.map(() => "?").join(",");
+    return { clause: ` AND token_hash IN (${placeholders})`, params: tokenHashes as unknown as number[] };
+};
+
 const buildRangeStartSeconds = (range: AnalyticsRange): number => {
     return Math.floor(Date.now() / 1000) - RANGE_LOOKBACK_SECONDS[range];
 };
@@ -110,13 +120,15 @@ const buildBucketTimestamps = (range: AnalyticsRange): number[] => {
 // ---- 概览 ----
 export const queryLocalUsageOverview = async (
     c: Context<HonoCustomType>,
-    requestedRange?: string
+    requestedRange?: string,
+    tokenHashes?: string[]
 ) => {
     if (!isLocalDbAnalyticsMode(c)) {
         return { range: "24h", totals: { requests: 0, successes: 0, failures: 0, successRate: 0, totalCost: 0, totalTokens: 0, promptTokens: 0, completionTokens: 0, avgLatencyMs: 0 } };
     }
     const range = getRange(requestedRange);
     const startSec = buildRangeStartSeconds(range);
+    const tokenFilter = buildTokenFilter(tokenHashes);
     // usage_record 表在 timestamp 存秒; 保证 DB 存在
     const db = getDb(c);
     const row = await db.prepare(
@@ -127,8 +139,8 @@ export const queryLocalUsageOverview = async (
                 SUM(prompt_tokens) AS prompt_tokens,
                 SUM(completion_tokens) AS completion_tokens,
                 COALESCE(AVG(latency_ms), 0) AS avg_latency_ms
-         FROM usage_record WHERE timestamp >= ?`
-    ).bind(startSec).first<Record<string, unknown>>();
+         FROM usage_record WHERE timestamp >= ?${tokenFilter.clause}`
+    ).bind(startSec, ...tokenFilter.params).first<Record<string, unknown>>();
 
     const requests = toNumber(row?.requests);
     const successes = toNumber(row?.successes);
@@ -151,7 +163,8 @@ export const queryLocalUsageOverview = async (
 // ---- 趋势 ----
 export const queryLocalUsageTrend = async (
     c: Context<HonoCustomType>,
-    requestedRange?: string
+    requestedRange?: string,
+    tokenHashes?: string[]
 ) => {
     if (!isLocalDbAnalyticsMode(c)) {
         const range = getRange(requestedRange);
@@ -162,15 +175,16 @@ export const queryLocalUsageTrend = async (
     const bucketTimestamps = buildBucketTimestamps(range);
     const startSec = Math.min(...bucketTimestamps);
     const endSec = Math.max(...bucketTimestamps) + bucketSize;
+    const tokenFilter = buildTokenFilter(tokenHashes);
 
     const db = getDb(c);
     // 用整数除法时间桶(所有数据库通用): FLOOR(timestamp / bucketSize)
     const rows = await db.prepare(
         `SELECT (timestamp / ?) AS bucket_idx, FLOOR(timestamp / ?) * ? AS bucket_ts,
                 COUNT(*) AS requests, SUM(success_flag) AS successes, SUM(total_cost) AS total_cost
-         FROM usage_record WHERE timestamp >= ? AND timestamp < ?
+         FROM usage_record WHERE timestamp >= ? AND timestamp < ?${tokenFilter.clause}
          GROUP BY bucket_idx, bucket_ts ORDER BY bucket_ts ASC`
-    ).bind(bucketSize, bucketSize, bucketSize, startSec, endSec).all<Record<string, unknown>>();
+    ).bind(bucketSize, bucketSize, bucketSize, startSec, endSec, ...tokenFilter.params).all<Record<string, unknown>>();
 
     const rowsByBucket = new Map<number, Record<string, unknown>>();
     normalizeTimestamps(rows.results).forEach((row) => {
@@ -200,7 +214,8 @@ export const queryLocalUsageTrend = async (
 export const queryLocalUsageBreakdown = async (
     c: Context<HonoCustomType>,
     requestedRange?: string,
-    requestedDimension?: string
+    requestedDimension?: string,
+    tokenHashes?: string[]
 ) => {
     const range = getRange(requestedRange);
     const dimension = (requestedDimension && requestedDimension in BREAKDOWN_COLUMNS
@@ -210,15 +225,16 @@ export const queryLocalUsageBreakdown = async (
     }
     const startSec = buildRangeStartSeconds(range);
     const column = BREAKDOWN_COLUMNS[dimension];
+    const tokenFilter = buildTokenFilter(tokenHashes);
     const db = getDb(c);
     const rows = await db.prepare(
         `SELECT ${column} AS label, COUNT(*) AS requests, SUM(success_flag) AS successes,
                 SUM(total_cost) AS total_cost, SUM(total_tokens) AS total_tokens,
                 SUM(prompt_tokens) AS prompt_tokens, SUM(completion_tokens) AS completion_tokens,
                 COALESCE(AVG(latency_ms), 0) AS avg_latency_ms
-         FROM usage_record WHERE timestamp >= ? AND ${column} != ''
+         FROM usage_record WHERE timestamp >= ? AND ${column} != ''${tokenFilter.clause}
          GROUP BY label ORDER BY requests DESC, total_cost DESC LIMIT 12`
-    ).bind(startSec).all<Record<string, unknown>>();
+    ).bind(startSec, ...tokenFilter.params).all<Record<string, unknown>>();
 
     return {
         range,
