@@ -356,6 +356,11 @@ const dbOperations = {
 
         await migrateApiTokenUsagePrecision(c);
 
+        // Seed 默认免费渠道(OpenCode + Kilo Gateway)与默认管理员账号。
+        // 移动到 version 检查之前: 老库(version 已最新)也能补齐种子 (均幂等)。
+        await seedFreeChannels(c);
+        await seedDefaultAdmin(c);
+
         const version = await getSetting(c, CONSTANTS.DB_VERSION_KEY);
         if (version === CONSTANTS.DB_VERSION) {
             return;
@@ -386,13 +391,6 @@ const dbOperations = {
                  WHERE key = ?`
             ).bind(JSON.stringify(sanitizedConfig), row.key).run();
         }
-
-        // Seed 默认免费渠道(OpenCode + Kilo Gateway),已存在则跳过
-        await seedFreeChannels(c);
-
-        // 种子管理员账号 (默认 admin, 密码 = ADMIN_TOKEN 环境变量)
-        // 参照 one-api: 首次部署自动创建超级管理员
-        await seedDefaultAdmin(c);
 
         await saveSetting(c, CONSTANTS.DB_VERSION_KEY, CONSTANTS.DB_VERSION);
     },
