@@ -402,6 +402,14 @@ export const apiClient = {
       skipUnauthorizedHandler: true,
     }),
 
+  registerUser: (data: { username: string; password: string; display_name?: string; inviter_code?: string }) =>
+    request<ApiResponse<{ changes: number; aff_code?: string }>>('/api/admin/user/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+
   logoutUser: () =>
     request<ApiResponse<boolean>>('/api/admin/user/logout', {
       method: 'POST',

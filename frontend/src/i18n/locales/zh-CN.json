@@ -99,7 +99,12 @@
     "step3Desc": "为应用创建 API 令牌",
     "step4Title": "开始使用",
     "step4Desc": "使用令牌调用 API",
-    "supportedEndpoints": "支持的服务端点"
+    "supportedEndpoints": "支持的服务端点",
+    "register": "注册",
+    "regDesc": "创建一个新账号，开始使用",
+    "regInvalid": "用户名至少 3 位，密码至少 6 位",
+    "regSuccess": "注册成功，请登录",
+    "regFailed": "注册失败"
   },
   "channels": {
     "title": "渠道管理",

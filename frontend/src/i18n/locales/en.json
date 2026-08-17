@@ -99,7 +99,12 @@
     "step3Desc": "Create API tokens for apps",
     "step4Title": "Start Using",
     "step4Desc": "Call APIs with tokens",
-    "supportedEndpoints": "Supported Endpoints"
+    "supportedEndpoints": "Supported Endpoints",
+    "register": "Register",
+    "regDesc": "Create a new account to get started",
+    "regInvalid": "Username >= 3 chars, password >= 6 chars",
+    "regSuccess": "Registered, please login",
+    "regFailed": "Registration failed"
   },
   "channels": {
     "title": "Channels",

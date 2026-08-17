@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const response = await apiClient.userLogin(username, password)
-      const loginData = response.data as (UserSelfInfo & { requiresVerification?: boolean })
+      const loginData = (response.data as unknown) as UserSelfInfo
       clearAdminCredentials()
       set({
         isAuthenticated: true,
@@ -66,11 +66,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true })
     try {
       clearAdminCredentials()
-      await apiClient.checkAuth()
-      set({ isAuthenticated: true, isLoading: false })
+      // 用用户自助端点验证会话并获取身份 (普通用户/管理员均可)
+      const self = await apiClient.getUserProfile()
+      set({
+        isAuthenticated: true,
+        isLoading: false,
+        currentUser: self.data as UserSelfInfo,
+      })
     } catch (error) {
       clearAdminCredentials()
-      set({ isAuthenticated: false, isLoading: false })
+      set({ isAuthenticated: false, isLoading: false, currentUser: null })
     }
   },
 

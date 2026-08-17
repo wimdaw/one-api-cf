@@ -1,14 +1,47 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Globe, Gauge, BarChart3, Shield, Zap, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuthStore } from "@/store/auth";
+import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
+import { useState } from "react";
 
 export function Dashboard() {
   const { t } = useTranslation();
   const { openAuthModal } = useAuthStore();
+  const { addToast } = useToast();
+  const [showRegister, setShowRegister] = useState(false);
+  const [regForm, setRegForm] = useState({ username: "", password: "", display_name: "" });
+  const [regError, setRegError] = useState("");
+  const [regSubmitting, setRegSubmitting] = useState(false);
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegError("");
+    if (regForm.username.trim().length < 3 || regForm.password.length < 6) {
+      setRegError(t('dashboard.regInvalid'));
+      return;
+    }
+    setRegSubmitting(true);
+    try {
+      await apiClient.registerUser({ username: regForm.username.trim(), password: regForm.password, display_name: regForm.display_name.trim() });
+      setShowRegister(false);
+      setRegForm({ username: "", password: "", display_name: "" });
+      addToast(t('dashboard.regSuccess'), "success");
+      openAuthModal();
+    } catch (error) {
+      setRegError(error instanceof Error ? error.message : t('dashboard.regFailed'));
+    } finally {
+      setRegSubmitting(false);
+    }
+  };
 
   const { data: pubConfig } = useQuery({
     queryKey: ["public-system-config"],
@@ -86,6 +119,14 @@ export function Dashboard() {
               >
                 {t('auth.adminLogin')}
                 <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => setShowRegister(true)}
+                className="h-12 px-6 text-[15px]"
+              >
+                {t('dashboard.register')}
               </Button>
             </div>
           </div>
@@ -168,6 +209,42 @@ export function Dashboard() {
             ))}
           </div>
         </div>
+
+        {/* Register Dialog */}
+        <Dialog open={showRegister} onOpenChange={setShowRegister}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('dashboard.register')}</DialogTitle>
+              <DialogDescription>{t('dashboard.regDesc')}</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleRegister}>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reg-username">{t('auth.usernameLabel')}</Label>
+                  <Input id="reg-username" value={regForm.username}
+                    onChange={(e) => setRegForm({ ...regForm, username: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reg-display">{t('account.displayName')}</Label>
+                  <Input id="reg-display" value={regForm.display_name}
+                    onChange={(e) => setRegForm({ ...regForm, display_name: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reg-password">{t('auth.passwordLabel')}</Label>
+                  <Input id="reg-password" type="password" value={regForm.password}
+                    onChange={(e) => setRegForm({ ...regForm, password: e.target.value })} required />
+                </div>
+                {regError && <p className="text-sm text-destructive">{regError}</p>}
+              </div>
+              <DialogFooter className="mt-6 gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowRegister(false)}>{t('common.cancel')}</Button>
+                <Button type="submit" disabled={regSubmitting}>
+                  {regSubmitting ? t('auth.sending') : t('dashboard.register')}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

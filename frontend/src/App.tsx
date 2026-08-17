@@ -40,15 +40,35 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// 管理员路由: 仅 admin/root 可访问; 普通用户跳转个人中心
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, currentUser } = useAuthStore();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  if ((currentUser?.role ?? 0) < 10) {
+    return <Navigate to="/account" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 function HomeRoute() {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, currentUser } = useAuthStore();
 
   if (isLoading) {
     return null;
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    // 管理员进全局看板, 普通用户进个人中心
+    return <Navigate to={(currentUser?.role ?? 0) >= 10 ? "/dashboard" : "/account"} replace />;
   }
 
   return <Dashboard />;
@@ -79,73 +99,73 @@ function App() {
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Analytics />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/usage-logs"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <UsageLogs />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/channels"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Channels />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/channels/new"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Channels createMode />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/channels/edit/:key"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Channels editRoute />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/tokens"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Tokens />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/tokens/new"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Tokens createMode />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/tokens/edit/:key"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Tokens editRoute />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
                         <Route
               path="/users"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Users />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
@@ -159,25 +179,25 @@ function App() {
             <Route
               path="/redemptions"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Redemptions />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/pricing"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Pricing />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/settings"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <SystemSettings />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route path="*" element={<NotFound />} />

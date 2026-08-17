@@ -99,7 +99,12 @@
     "step3Desc": "為應用建立 API 令牌",
     "step4Title": "開始使用",
     "step4Desc": "使用令牌呼叫 API",
-    "supportedEndpoints": "支援的服務端點"
+    "supportedEndpoints": "支援的服務端點",
+    "register": "註冊",
+    "regDesc": "創建一個新帳號，開始使用",
+    "regInvalid": "用戶名至少 3 位，密碼至少 6 位",
+    "regSuccess": "註冊成功，請登入",
+    "regFailed": "註冊失敗"
   },
   "channels": {
     "title": "渠道管理",
