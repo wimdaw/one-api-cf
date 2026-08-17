@@ -1,7 +1,7 @@
 import { getAdminCredentialScopeToken } from "@/lib/admin-auth";
 
 const CACHE_PREFIX = "one-api-cache";
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 export interface LocalCacheEntry<T> {
   version: number;
