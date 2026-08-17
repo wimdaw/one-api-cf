@@ -79,6 +79,9 @@ type ChannelConfig = {
     api_keys?: string[];
     auto_retry?: boolean;
     auto_rotate?: boolean;
+    // 自动故障转移镜像地址列表: 配置真实 Key 时优先官方 endpoint, 失败后按序轮询镜像;
+    // 未配置 Key(免 Key 渠道)时直接使用镜像。镜像请求使用 Bearer public。
+    mirrors?: string[];
     models?: ChannelModelMapping[];
     supported_models?: string[];
     deployment_mapper?: Record<string, string>;

@@ -6,6 +6,20 @@ import { Context } from "hono";
 // 在数据库迁移时自动 seed,不存在则插入,已存在则跳过(不覆盖用户配置)。
 // ---------------------------------------------------------------------------
 
+// OpenCode 公共镜像地址(cnliussl 大佬提供)。可在 OPENCODE_MIRRORS_URL 环境变量中追加(换行/逗号分隔)。
+const DEFAULT_OPENCODE_MIRRORS = [
+    "https://opencode.ai.cmliussss.net/zen/v1",
+    "https://opencode.fastly.cmliussss.net/zen/v1",
+    "https://opencode.gcore.cmliussss.net/zen/v1",
+];
+
+// 从环境变量读取 OpenCode 镜像(兼容换行/逗号分隔, 去空白去重), 并入默认镜像
+export const resolveOpenCodeMirrors = (env: any): string[] => {
+    const raw = env?.OPENCODE_MIRRORS_URL || "";
+    const parts = String(raw).split("\n").flatMap((s) => s.split(",")).map((s) => s.trim()).filter(Boolean);
+    return [...new Set([...DEFAULT_OPENCODE_MIRRORS, ...parts])];
+};
+
 // OpenCode 免费后端:https://opencode.ai 的 zen/v1 网关,免 key
 export const FREE_OPENCODE_CHANNEL: ChannelConfig = {
     name: "OpenCode (Free)",
@@ -17,6 +31,7 @@ export const FREE_OPENCODE_CHANNEL: ChannelConfig = {
     api_keys: ["public"],
     auto_retry: true,
     auto_rotate: true,
+    mirrors: DEFAULT_OPENCODE_MIRRORS,
     models: [
         { id: "big-pickle", name: "big-pickle" },
         { id: "deepseek-v4-flash-free", name: "deepseek-v4-flash-free" },
@@ -82,14 +97,35 @@ export async function seedFreeChannels(
         try {
             const exists = await channelExists(c, preset.key);
             if (exists) {
+                // 升级补丁: 已存在的 opencode-free 渠道若未配置镜像, 补默认镜像列表 (不覆盖用户配置)
+                if (preset.config.mirrors && preset.config.mirrors.length > 0) {
+                    const row = await c.env.DB.prepare(
+                        "SELECT value FROM channel_config WHERE key = ?"
+                    ).bind(preset.key).first<{ value: string }>();
+                    if (row?.value) {
+                        try {
+                            const existing = JSON.parse(row.value) as ChannelConfig;
+                            if (!existing.mirrors || existing.mirrors.length === 0) {
+                                existing.mirrors = resolveOpenCodeMirrors(c.env);
+                                await c.env.DB.prepare(
+                                    `UPDATE channel_config SET value = ?, updated_at = datetime('now') WHERE key = ?`
+                                ).bind(JSON.stringify(existing), preset.key).run();
+                                console.log(`[seed] Backfilled mirrors for ${preset.key}`);
+                            }
+                        } catch {
+                            // 配置损坏时跳过, 保持原样
+                        }
+                    }
+                }
                 continue;
             }
 
+            const config = { ...preset.config, mirrors: resolveOpenCodeMirrors(c.env) };
             await c.env.DB.prepare(
                 `INSERT INTO channel_config (key, value)
                  VALUES (?, ?)
                  ON CONFLICT(key) DO NOTHING`
-            ).bind(preset.key, JSON.stringify(preset.config)).run();
+            ).bind(preset.key, JSON.stringify(config)).run();
 
             created.push(preset.key);
         } catch (error) {

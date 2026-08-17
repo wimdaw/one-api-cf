@@ -196,7 +196,9 @@
       "modelJsonIdEmpty": "Model ID in JSON cannot be empty",
       "defaultParamsJsonInvalid": "Invalid default parameters JSON",
       "defaultParamsJsonMustBeObject": "Default parameters must be a JSON object"
-    }
+    },
+    "mirrors": "Mirror URLs (auto failover)",
+    "mirrorsHint": "With a real key, the official endpoint is tried first, then mirrors on failure; keyless channels use mirrors directly. One URL per line"
   },
   "tokens": {
     "title": "Tokens",

@@ -150,6 +150,9 @@ export const normalizeChannelConfig = (
         api_keys: normalizeApiKeys(config),
         auto_retry: config.auto_retry ?? DEFAULT_CHANNEL_AUTO_RETRY,
         auto_rotate: config.auto_rotate ?? DEFAULT_CHANNEL_AUTO_ROTATE,
+        mirrors: Array.isArray(config.mirrors)
+            ? config.mirrors.map((m) => String(m || "").trim()).filter(Boolean)
+            : undefined,
         models,
         supported_models: models.map((model) => model.name),
         deployment_mapper: deploymentMapper,
@@ -171,6 +174,7 @@ export const sanitizeChannelConfig = (
         api_keys: normalized.api_keys,
         auto_retry: normalized.auto_retry,
         auto_rotate: normalized.auto_rotate,
+        mirrors: normalized.mirrors,
         models: normalized.models,
         model_pricing: normalized.model_pricing,
     };

@@ -21,6 +21,7 @@ export interface ChannelConfig {
   api_keys?: string[]
   auto_retry?: boolean
   auto_rotate?: boolean
+  mirrors?: string[]
   models?: ChannelModelMapping[]
   supported_models?: string[]
   deployment_mapper?: Record<string, string>

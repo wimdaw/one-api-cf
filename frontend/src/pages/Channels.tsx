@@ -585,6 +585,7 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
   const [channelKey, setChannelKey] = useState("");
   const [jsonValue, setJsonValue] = useState("");
   const [apiKeysInput, setApiKeysInput] = useState("");
+  const [mirrorsInput, setMirrorsInput] = useState("");
   const [modelRows, setModelRows] = useState<ModelRow[]>([createEmptyModelRow()]);
   const [modelJsonValue, setModelJsonValue] = useState("[]");
   const [searchQuery, setSearchQuery] = useState("");
@@ -632,6 +633,7 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
     const normalizedConfig = normalizeChannelFormConfig(config);
     setFormData(normalizedConfig);
     setApiKeysInput(formatApiKeys(normalizedConfig.api_keys));
+    setMirrorsInput(formatApiKeys(normalizedConfig.mirrors || []));
     setModelRows(buildRowsFromModels(normalizedConfig.models || []));
     setModelJsonValue(serializeModels(normalizedConfig.models || []));
     setModelEditorMode("visual");
@@ -758,6 +760,7 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
     setChannelKey("");
     setJsonValue("");
     setApiKeysInput("");
+    setMirrorsInput("");
     setModelRows([createEmptyModelRow()]);
     setModelJsonValue("[]");
     setModelEditorMode("visual");
@@ -1532,6 +1535,20 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
                         className="font-mono text-sm"
                       />
                       <p className="text-xs text-muted-foreground">{t("channels.apiKeysHint")}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">{t("channels.mirrors")}</Label>
+                      <Textarea
+                        value={mirrorsInput}
+                        onChange={(e) => {
+                          setMirrorsInput(e.target.value);
+                          setFormData({ ...formData, mirrors: parseApiKeys(e.target.value) });
+                        }}
+                        placeholder={"https://mirror1.example.com/v1\nhttps://mirror2.example.com/v1"}
+                        rows={3}
+                        className="font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">{t("channels.mirrorsHint")}</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <label className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30 cursor-pointer">

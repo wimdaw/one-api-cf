@@ -196,7 +196,9 @@
       "modelJsonIdEmpty": "模型 JSON 中的 id 不能为空",
       "defaultParamsJsonInvalid": "默认参数 JSON 格式错误",
       "defaultParamsJsonMustBeObject": "默认参数必须是 JSON 对象"
-    }
+    },
+    "mirrors": "镜像地址（自动故障转移）",
+    "mirrorsHint": "配置真实 Key 时优先官方地址，失败后自动切换镜像；免 Key 渠道直接使用镜像。每行一个 URL"
   },
   "tokens": {
     "title": "令牌管理",
