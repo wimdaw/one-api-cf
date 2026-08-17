@@ -305,7 +305,9 @@
     "breakdownEmpty": "当前时间范围暂无维度排行数据",
     "breakdownSuccessRate": "成功率 {{rate}}",
     "breakdownTokens": "消耗 {{count}}",
-    "breakdownCost": "费用 {{cost}}"
+    "breakdownCost": "费用 {{cost}}",
+    "userRanking": "用户排行",
+    "userRankingDesc": "按请求量识别最活跃的访问用户"
   },
   "usageLogs": {
     "title": "使用日志",

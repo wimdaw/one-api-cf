@@ -12,7 +12,25 @@ import {
 import { t } from "../i18n";
 
 export type AnalyticsRange = "24h" | "7d" | "30d" | "90d";
-export type AnalyticsBreakdownDimension = "token" | "channel" | "model" | "provider";
+export type AnalyticsBreakdownDimension = "token" | "channel" | "model" | "provider" | "user";
+
+export type AnalyticsBreakdownData = {
+    range: string;
+    dimension: AnalyticsBreakdownDimension;
+    items: Array<{
+        label: string;
+        requests: number;
+        successes: number;
+        failures: number;
+        successRate: number;
+        totalCost: number;
+        totalTokens: number;
+        promptTokens: number;
+        completionTokens: number;
+        avgLatencyMs: number;
+    }>;
+};
+
 export type UsageLogFilterDimension =
     | "route"
     | "token"
@@ -165,6 +183,8 @@ const BREAKDOWN_FIELDS: Record<AnalyticsBreakdownDimension, string> = {
     channel: BLOB_FIELDS.channelKey,
     model: BLOB_FIELDS.requestedModel,
     provider: BLOB_FIELDS.providerType,
+    // Analytics Engine 无 token_hash; 用户排行主要依赖 D1. 此处用 tokenName 兜底避免空字段
+    user: BLOB_FIELDS.tokenName,
 };
 
 const LOG_FILTER_FIELDS: Record<UsageLogFilterDimension, string> = {

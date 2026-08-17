@@ -3,6 +3,7 @@ import { OpenAPIRoute } from "chanfana";
 import { z } from "zod";
 
 import { CommonErrorResponse, CommonSuccessfulResponse } from "../model";
+import { AnalyticsBreakdownData } from "../analytics/query";
 import {
     AnalyticsQueryUpstreamError,
     AnalyticsQueryValidationError,
@@ -12,6 +13,61 @@ import {
     queryUsageEvents,
     queryUsageLogRecords,
 } from "../analytics/query";
+import { hashTokenKey } from "../analytics/usage-logger";
+
+// 用户排行: 把 token_hash 映射为用户名 (通过 api_token.user_id -> users.username)
+async function mapTokenHashesToUsers(
+    c: Context<HonoCustomType>,
+    items: AnalyticsBreakdownData["items"]
+): Promise<AnalyticsBreakdownData["items"]> {
+    try {
+        const tokenRows = await c.env.DB.prepare(
+            "SELECT key, value FROM api_token"
+        ).all<{ key: string; value: string }>();
+
+        // token_hash -> username 映射
+        const hashToUser = new Map<string, string>();
+        const userIds = new Set<number>();
+        for (const row of tokenRows.results || []) {
+            try {
+                const data = JSON.parse(row.value) as ApiTokenData;
+                if (data.user_id && data.user_id > 0) {
+                    hashToUser.set(await hashTokenKey(row.key), `user:${data.user_id}`);
+                    userIds.add(data.user_id);
+                }
+            } catch {
+                // skip
+            }
+        }
+
+        // 批量拉用户名
+        const userMap = new Map<number, string>();
+        if (userIds.size > 0) {
+            const placeholders = [...userIds].map(() => "?").join(",");
+            const users = await c.env.DB.prepare(
+                `SELECT id, username FROM users WHERE id IN (${placeholders})`
+            ).bind(...[...userIds]).all<{ id: number; username: string }>();
+            for (const u of users.results || []) {
+                userMap.set(Number(u.id), u.username);
+            }
+        }
+
+        return items.map((item) => {
+            const mapped = hashToUser.get(item.label);
+            if (mapped && mapped.startsWith("user:")) {
+                const uid = Number(mapped.slice(5));
+                const username = userMap.get(uid);
+                if (username) {
+                    return { ...item, label: username };
+                }
+            }
+            return { ...item, label: item.label === "" ? "anonymous" : item.label };
+        });
+    } catch (error) {
+        console.error("mapTokenHashesToUsers error:", error);
+        return items;
+    }
+}
 
 const rangeSchema = z.enum(["24h", "7d", "30d", "90d"]).optional();
 type AnalyticsErrorStatus = 400 | 401 | 403 | 404 | 429 | 500 | 502 | 504;
@@ -109,7 +165,7 @@ export class AnalyticsBreakdownEndpoint extends OpenAPIRoute {
         request: {
             query: z.object({
                 range: rangeSchema,
-                dimension: z.enum(["token", "channel", "model", "provider"]).optional(),
+                dimension: z.enum(["token", "channel", "model", "provider", "user"]).optional(),
             }),
         },
         responses: {
@@ -124,7 +180,13 @@ export class AnalyticsBreakdownEndpoint extends OpenAPIRoute {
                 c,
                 c.req.query("range"),
                 c.req.query("dimension")
-            );
+            ) as AnalyticsBreakdownData;
+
+            // 用户排行: 把 token_hash 映射为用户名
+            if (c.req.query("dimension") === "user" && result?.items?.length) {
+                result.items = await mapTokenHashesToUsers(c, result.items);
+            }
+
             return {
                 success: true,
                 data: result,

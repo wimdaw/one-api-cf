@@ -41,7 +41,7 @@ export function MyAccount() {
 
   const { data: dashboard } = useQuery({
     queryKey: ["my-dashboard"],
-    queryFn: async () => (await apiClient.myDashboard()).data,
+    queryFn: async () => (await apiClient.myAnalytics("7d", "model")).data,
   });
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["my-tokens"] }); queryClient.invalidateQueries({ queryKey: ["my-usage"] }); };
@@ -100,28 +100,28 @@ export function MyAccount() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="rounded-lg bg-muted/40 p-3">
                   <div className="text-xs text-muted-foreground">{t("account.reqTotal")}</div>
-                  <div className="text-xl font-bold">{dashboard.total_requests}</div>
+                  <div className="text-xl font-bold">{dashboard.overview?.totals?.requests ?? 0}</div>
                 </div>
                 <div className="rounded-lg bg-muted/40 p-3">
                   <div className="text-xs text-muted-foreground">{t("account.reqSuccess")}</div>
-                  <div className="text-xl font-bold">{dashboard.success_requests}</div>
+                  <div className="text-xl font-bold">{dashboard.overview?.totals?.successes ?? 0}</div>
                 </div>
                 <div className="rounded-lg bg-muted/40 p-3">
                   <div className="text-xs text-muted-foreground">{t("account.tokensUsed")}</div>
-                  <div className="text-xl font-bold">{dashboard.total_tokens}</div>
+                  <div className="text-xl font-bold">{dashboard.overview?.totals?.totalTokens ?? 0}</div>
                 </div>
                 <div className="rounded-lg bg-muted/40 p-3">
                   <div className="text-xs text-muted-foreground">{t("account.costTotal")}</div>
-                  <div className="text-xl font-bold">{dashboard.total_cost.toFixed(4)}</div>
+                  <div className="text-xl font-bold">{(dashboard.overview?.totals?.totalCost ?? 0).toFixed(4)}</div>
                 </div>
               </div>
-              {dashboard.by_model && dashboard.by_model.length > 0 && (
+              {dashboard.breakdown?.items && dashboard.breakdown.items.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-sm font-medium">{t("account.byModel")}</div>
-                  {dashboard.by_model.slice(0, 8).map((m) => (
-                    <div key={m.model} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground truncate">{m.model}</span>
-                      <span className="shrink-0">{m.count} · {m.tokens}t</span>
+                  {dashboard.breakdown.items.slice(0, 8).map((m) => (
+                    <div key={m.label} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground truncate">{m.label}</span>
+                      <span className="shrink-0">{m.requests} · {m.totalTokens}t</span>
                     </div>
                   ))}
                 </div>

@@ -86,9 +86,9 @@ export function Analytics() {
       badgeClassName: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400",
     },
     {
-      dimension: "token",
-      title: t('analytics.tokenRanking'),
-      description: t('analytics.tokenRankingDesc'),
+      dimension: "user",
+      title: t('analytics.userRanking'),
+      description: t('analytics.userRankingDesc'),
       barClassName: "from-sky-500 to-cyan-400",
       badgeClassName: "bg-sky-500/12 text-sky-600 dark:text-sky-400",
     },
@@ -211,11 +211,25 @@ export function Analytics() {
     initialDataUpdatedAt: providerBreakdownCacheEntry?.updatedAt,
   });
 
+  const userBreakdownQuery = useQuery({
+    queryKey: ["analytics", "breakdown", range, "user", isNormalUser ? "mine" : "global"],
+    queryFn: async () => {
+      const response = isNormalUser
+        ? await apiClient.myAnalytics(range, "model")
+        : await apiClient.getAnalyticsBreakdown(range, "user");
+      const data = (response.data as MyAnalyticsData).breakdown || response.data as AnalyticsBreakdownData;
+      writeScopedCache(getAnalyticsBreakdownCacheKey(range, "user"), data);
+      return data;
+    },
+    enabled: !isNormalUser,
+  });
+
   const breakdownDataMap: Record<AnalyticsBreakdownDimension, AnalyticsBreakdownData | undefined> = {
     token: tokenBreakdownQuery.data,
     channel: channelBreakdownQuery.data,
     model: modelBreakdownQuery.data,
     provider: providerBreakdownQuery.data,
+    user: userBreakdownQuery.data,
   };
 
   const breakdownStateMap: Record<AnalyticsBreakdownDimension, { isLoading: boolean; isError: boolean }> = {
@@ -223,6 +237,7 @@ export function Analytics() {
     channel: { isLoading: channelBreakdownQuery.isLoading, isError: channelBreakdownQuery.isError },
     model: { isLoading: modelBreakdownQuery.isLoading, isError: modelBreakdownQuery.isError },
     provider: { isLoading: providerBreakdownQuery.isLoading, isError: providerBreakdownQuery.isError },
+    user: { isLoading: userBreakdownQuery.isLoading, isError: userBreakdownQuery.isError },
   };
 
   const isFetching =

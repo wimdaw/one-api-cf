@@ -305,7 +305,9 @@
     "breakdownEmpty": "No ranking data for the current time range",
     "breakdownSuccessRate": "Success {{rate}}",
     "breakdownTokens": "Tokens {{count}}",
-    "breakdownCost": "Cost {{cost}}"
+    "breakdownCost": "Cost {{cost}}",
+    "userRanking": "User Ranking",
+    "userRankingDesc": "Identify the most active users by request volume"
   },
   "usageLogs": {
     "title": "Usage Logs",

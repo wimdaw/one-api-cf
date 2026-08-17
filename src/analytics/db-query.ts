@@ -16,7 +16,7 @@ const getDb = (c: Context<HonoCustomType>): D1Like => {
 // ---------------------------------------------------------------------------
 
 export type AnalyticsRange = "24h" | "7d" | "30d" | "90d";
-export type AnalyticsBreakdownDimension = "token" | "channel" | "model" | "provider";
+export type AnalyticsBreakdownDimension = "token" | "channel" | "model" | "provider" | "user";
 export type UsageLogFilterDimension =
     | "route" | "token" | "channel" | "model" | "provider"
     | "requestId" | "traceId" | "clientIp" | "userAgent"
@@ -53,6 +53,7 @@ const BREAKDOWN_COLUMNS: Record<AnalyticsBreakdownDimension, string> = {
     channel: "channel_key",
     model: "requested_model",
     provider: "provider_type",
+    user: "token_hash",
 };
 
 const LOG_FILTER_COLUMNS: Record<UsageLogFilterDimension, string> = {
