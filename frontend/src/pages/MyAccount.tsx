@@ -34,11 +34,6 @@ export function MyAccount() {
     queryFn: async () => (await apiClient.myUsage()).data as MyUsage,
   });
 
-  const { data: profile } = useQuery({
-    queryKey: ["my-profile"],
-    queryFn: async () => (await apiClient.getUserProfile()).data as { aff_code?: string },
-  });
-
   const { data: dashboard } = useQuery({
     queryKey: ["my-dashboard"],
     queryFn: async () => (await apiClient.myAnalytics("7d", "model")).data,
@@ -147,27 +142,6 @@ export function MyAccount() {
           <Button onClick={() => redeemMutation.mutate()} disabled={!redeemCode || redeemMutation.isPending}>
             {t("account.redeem")}
           </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border-0">
-        <CardContent className="p-5 space-y-3">
-          <Label className="flex items-center gap-1.5"><Gift className="h-4 w-4" />{t("account.inviteTitle")}</Label>
-          <p className="text-sm text-muted-foreground">{t("account.inviteDesc")}</p>
-          {profile?.aff_code ? (
-            <div className="flex items-center gap-2">
-              <code className="flex-1 px-3 py-2 rounded-md bg-muted font-mono text-sm">{profile.aff_code}</code>
-              <Button variant="outline" size="sm" onClick={() => {
-                copyToClipboard(profile.aff_code || "");
-                addToast(t("account.copied"), "success");
-              }}>
-                <Copy className="h-3.5 w-3.5 mr-1" />
-                {t("account.copy")}
-              </Button>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t("account.inviteNone")}</p>
-          )}
         </CardContent>
       </Card>
 
