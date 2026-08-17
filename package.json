@@ -7,8 +7,8 @@
     "dev": "concurrently --kill-others-on-fail -n web,worker -c cyan,green \"bun run dev:web\" \"bun run dev:worker\"",
     "dev:web": "bun run --filter frontend dev",
     "dev:worker": "wrangler dev --config wrangler.local.jsonc --local --host localhost",
-    "build": "bun run --filter frontend build",
-    "build:node": "bun run --filter frontend build && bun build src/node-entry.ts --outfile=dist/node-entry.js --target=node --format=esm",
+    "build": "bun run --filter frontend build && cp node_modules/sql.js/dist/sql-wasm.wasm public/sql-wasm.wasm",
+    "build:node": "bun run build && bun build src/node-entry.ts --outfile=dist/node-entry.js --target=node --format=esm",
     "deploy": "bun run build && wrangler deploy --config wrangler.jsonc",
     "cf-typegen": "wrangler types --config wrangler.jsonc --include-env=false"
   },

@@ -169,4 +169,32 @@ openapi.onError((err, c) => {
 openapi.route('/', providerApi)
 openapi.route('/', adminApi)
 
-export default app
+// ---------------------------------------------------------------------------
+// Cloudflare 部署入口: 自动适配 D1 或 KV 数据库。
+//   - D1 模式: env.DB 为原生 D1, 直接用。
+//   - KV 模式: 用 sql-asm.js 内存库 + KV 持久化, 注入为 env.DB (与 D1 接口一致)。
+// 业务代码统一走 c.env.DB, 无需感知底层是 D1 还是 KV。
+// ---------------------------------------------------------------------------
+import { resolveDb } from './storage'
+
+const cachedHandler = async (
+    request: Request,
+    env: Record<string, unknown>,
+    ctx: ExecutionContext
+): Promise<Response> => {
+    // 统一数据库解析 (KV 模式下惰性构建内存库并缓存, 后续请求直接命中)
+    await resolveDb(env)
+
+    const handler = app.fetch as (
+        req: Request, e: Record<string, unknown>, c: ExecutionContext
+    ) => Promise<Response>
+    const injectedEnv = {
+        ...env,
+        DB: (await resolveDb(env)) ?? (env as any).DB,
+    } as any
+    return handler(request, injectedEnv, ctx)
+}
+
+export default {
+    fetch: cachedHandler,
+}

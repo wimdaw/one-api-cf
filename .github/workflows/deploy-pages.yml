@@ -2,6 +2,15 @@ name: Deploy to Cloudflare Pages
 
 on:
   workflow_dispatch:
+    inputs:
+      db_mode:
+        description: "Database backend (d1 = Cloudflare D1, kv = Cloudflare KV)"
+        required: true
+        default: "d1"
+        type: choice
+        options:
+          - d1
+          - kv
   push:
     branches:
       - main

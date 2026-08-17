@@ -16,8 +16,12 @@ bun build src/index.ts \
   --format=esm \
   --minify
 
-echo "=== 3. 校验产物 ==="
+echo "=== 3. 复制 sql.js wasm 到 public/ (KV 模式首次初始化用) ==="
+cp node_modules/sql.js/dist/sql-wasm.wasm public/sql-wasm.wasm
+echo "✅ sql-wasm.wasm -> public/"
+
+echo "=== 4. 校验产物 ==="
 ls -la public/_worker.js
 grep -q 'export{' public/_worker.js && echo "✅ _worker.js 为 ES module 入口" || { echo "❌ 产物非 ES module"; exit 1; }
 
-echo "✅ Pages 构建完成: public/ (frontend) + _worker.js (worker)"
+echo "✅ Pages 构建完成: public/ (frontend) + _worker.js (worker) + sql-wasm.wasm"

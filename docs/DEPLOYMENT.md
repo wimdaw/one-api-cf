@@ -6,9 +6,25 @@
 
 ---
 
+## 数据库模式选择(重要)
+
+Cloudflare 部署(Workers/Pages)支持 **两种数据库后端**,功能完全一致,任选其一:
+
+| 模式 | 说明 | 特点 |
+|---|---|---|
+| **D1(推荐)** | Cloudflare 原生 D1 数据库(SQLite),`usage_record` 直接落表 | 功能最完整,查询天然支持 |
+| **KV** | Cloudflare Key-Value 存储 + 内置 sql-asm.js 内存库 | 免建 D1,数据以整体快照存 KV;用法/看板一致 |
+
+- **功能等价**:两种模式下,渠道、令牌、设置、登录、用量分析看板全部可用,后台体验一致。
+- **Workers 部署**:手动触发 workflow 时,`db_mode` 下拉选 `d1` 或 `kv` 即可,自动创建对应资源。
+- **Pages 部署**:在 Pages 项目 **Settings → Bindings** 添加 **D1 Database(`DB`)** 或 **KV Namespace(`STORE`)**。
+- 两种模式可随时迁移(导出/导入数据库快照)。
+
+---
+
 ## 方式一:GitHub Actions 一键自动部署(推荐)
 
-CI 会自动完成:D1 数据库创建、`wrangler.jsonc` 自动改写、构建、部署。全程无需手动操作 Cloudflare 面板。
+CI 会自动完成:数据库(D1 或 KV)创建、`wrangler.jsonc` 自动改写、构建、部署。全程无需手动操作 Cloudflare 面板。
 
 ### 1. 推送代码到你自己的 GitHub 仓库
 
@@ -23,14 +39,14 @@ git push -u origin main
 
 | Secret | 说明 |
 |---|---|
-| `CF_API_TOKEN` | Cloudflare API Token,权限需包含 **Workers 编辑、D1 数据库、账号级读写**(分析数据直接存 D1,无需 Analytics Engine) |
+| `CF_API_TOKEN` | Cloudflare API Token,权限需包含 **Workers 编辑、D1 数据库、账号级读写**(分析数据直接存数据库,无需 Analytics Engine) |
 | `CF_ACCOUNT_ID` | 你的 Cloudflare 账户 ID(可在 Dashboard 右下角找到) |
 | `ADMIN_TOKEN` | 管理后台登录令牌(自定义,请用长随机串) |
 
 ### 3. 触发部署
 
-- **方式 A**:GitHub 页面 → **Actions** → **Deploy to Cloudflare Workers** → **Run workflow**
-- **方式 B**:直接往 `main` 分支 push,自动触发
+- **方式 A(推荐,选数据库)**:GitHub 页面 → **Actions** → **Deploy to Cloudflare Workers** → **Run workflow**,`db_mode` 下拉选 `d1`(D1)或 `kv`(KV) → 运行。自动创建对应数据库并部署。
+- **方式 B**:直接往 `main` 分支 push,自动触发(默认 D1 模式)。
 
 部署完成后,界面会输出一个 `*.workers.dev` 域名。
 
@@ -47,7 +63,7 @@ git push -u origin main
 ### 1. 环境要求
 
 - [Bun 1.3+](https://bun.sh)
-- Cloudflare 账户(需 Workers + D1 权限;分析数据直接存 D1,无需 Analytics Engine)
+- Cloudflare 账户(需 Workers + D1 或 KV 权限;分析数据直接存数据库,无需 Analytics Engine)
 - wrangler 已安装(`bun add -g wrangler` 或本项目 devDependency 自带)
 
 ### 2. 安装依赖
@@ -58,6 +74,8 @@ bun install
 
 ### 3. 创建 Cloudflare 资源
 
+**选择 D1 模式:**
+
 ```bash
 # 登录
 bunx wrangler login
@@ -66,12 +84,20 @@ bunx wrangler login
 bunx wrangler d1 create one-api-cf
 ```
 
+**或选择 KV 模式:**
+
+```bash
+# 创建 KV namespace,记录返回的 ID
+bunx wrangler kv namespace create one-api-cf-store
+```
+
 ### 4. 配置 wrangler.jsonc
 
 编辑该文件,填入:
-- `d1_databases[].database_id` → 你 D1 数据库的 ID
+- **D1 模式**:`d1_databases[].database_id` → 你 D1 数据库的 ID(binding 为 `DB`)
+- **KV 模式**:`kv_namespaces[].id` → 你 KV namespace 的 ID(binding 为 `STORE`,可参考 `wrangler.kv.jsonc`)
 
-> 用量分析数据写入 D1 的 `usage_record` 表(首次迁移自动创建),无需额外配置数据分析产品。
+> 用量分析数据写入数据库的 `usage_record` 表(首次迁移自动创建),两种模式无需额外配置数据分析产品。
 
 ### 5. 设置 Secret
 
@@ -115,14 +141,15 @@ bash scripts/build-pages.sh
 **首次部署前需在 Cloudflare 手动创建 Pages 项目**:
 
 1. Dashboard → **Workers & Pages** → **Create** → **Pages** → 创建空项目 `one-api-cf`
-2. 在 Pages 项目 → **Settings → Bindings** 添加:
+2. 在 Pages 项目 → **Settings → Bindings** 添加(二选一):
    - **D1 Database** → `DB` → 选择你的 `one-api-cf` 数据库(用量分析也存这张 D1)
+   - 或 **KV Namespace** → `STORE` → 选择你的 `one-api-cf-store` namespace(KV 模式)
 3. 在 Pages 项目 → **Settings → Environment variables** 添加:
    - `ADMIN_TOKEN`(管理后台令牌)
 
 之后手动触发 **Deploy to Cloudflare Pages** workflow 即可。
 
-> 注意:Pages 的 D1 绑定在 **项目 Settings** 里配置(而非 wrangler 配置),`_worker.js` 会自动读取同名 binding。
+> 注意:Pages 的 D1/KV 绑定在 **项目 Settings** 里配置(而非 wrangler 配置),`_worker.js` 会自动读取同名 binding。
 
 ---
 

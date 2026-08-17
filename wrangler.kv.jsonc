@@ -18,11 +18,12 @@
     "binding": "ASSETS",
     "run_worker_first": true
   },
-  "d1_databases": [
+  // KV 部署模式: 用 Cloudflare KV 作为数据库 (sql-asm.js 内存库 + KV 持久化)
+  // 把下方 id 替换为你自己的 KV namespace id
+  "kv_namespaces": [
     {
-      "binding": "DB",
-      "database_name": "one-api-cf",
-      "database_id": "5d429962-32e6-4895-8d40-467237292800"
+      "binding": "STORE",
+      "id": "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
     }
   ]
 }

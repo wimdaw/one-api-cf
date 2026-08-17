@@ -87,3 +87,38 @@ export function isDbInitialized(): boolean {
 }
 
 export { D1Like }
+
+// ---------------------------------------------------------------------------
+// Cloudflare 部署的统一数据库接入
+// 根据环境自动选择:
+//   - 有 D1 binding (env.DB)  → 直接用 D1 (原生 SQLite)
+//   - 有 KV binding (env.STORE)  → 用 KV 驱动的 sql-asm.js 内存库 + KV 持久化
+// 返回统一的 D1Like 接口, 业务代码无需区分 D1 / KV。
+// ---------------------------------------------------------------------------
+
+import { getKvDb } from "./kv"
+
+const resolveCache = new WeakMap<object, Promise<D1Like>>()
+
+export async function resolveDb(env: Record<string, unknown>): Promise<D1Like> {
+    // 1. D1 模式: env.DB 存在 (且不是 KV 占位)
+    if (env && (env as any).DB && typeof (env as any).DB.prepare === "function") {
+        return (env as any).DB as D1Like
+    }
+
+    // 2. KV 模式: env.STORE (或 KV_STORAGE) 存在
+    const kvBinding = (env as any).STORE || (env as any).KV_STORAGE
+    if (kvBinding && typeof (kvBinding as any).get === "function") {
+        if (resolveCache.has(kvBinding)) {
+            return resolveCache.get(kvBinding)!
+        }
+        const p = getKvDb(kvBinding, (env as any).ASSETS)
+        resolveCache.set(kvBinding, p)
+        return p
+    }
+
+    // 3. 兜底: 无 binding (如 Docker build 时的 CF 编译), 抛错提示
+    throw new Error(
+        "No database configured. Set a D1 binding (DB) or a KV namespace (STORE) in wrangler config."
+    )
+}

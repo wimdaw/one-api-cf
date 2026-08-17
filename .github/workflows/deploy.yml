@@ -2,6 +2,15 @@ name: Deploy to Cloudflare Workers
 
 on:
   workflow_dispatch: # 仅手动触发;push 时默认只部署 Pages
+    inputs:
+      db_mode:
+        description: "Database backend (d1 = Cloudflare D1, kv = Cloudflare KV)"
+        required: true
+        default: "d1"
+        type: choice
+        options:
+          - d1
+          - kv
 
 permissions:
   contents: read
@@ -9,7 +18,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy Worker (auto D1 + Analytics)
+    name: Deploy Worker
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,13 +31,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile || bun install
 
-      - name: Create/Get D1 database
+      - name: Create/Get D1 database (d1 mode)
         id: d1
+        if: github.event.inputs.db_mode == 'd1'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          # 查询已有同名 D1 数据库;没有则创建
           EXISTING=$(curl -s -X GET \
             "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database?per_page=50" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
@@ -51,34 +60,79 @@ jobs:
             echo "✅ D1 已创建: $CREATED"
           fi
 
-      - name: Configure wrangler.jsonc with real IDs
+      - name: Create/Get KV namespace (kv mode)
+        id: kv
+        if: github.event.inputs.db_mode == 'kv'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          EXISTING=$(curl -s -X GET \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces?per_page=50" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" | \
+            python3 -c "import sys,json;d=json.load(sys.stdin);print(next((r['id'] for r in d.get('result',[]) if r.get('title')=='one-api-cf-store'),''))")
+          if [ -n "$EXISTING" ]; then
+            echo "kv_id=$EXISTING" >> $GITHUB_OUTPUT
+            echo "✅ KV namespace 已存在: $EXISTING"
+          else
+            CREATED=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces" \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{"title":"one-api-cf-store"}' | \
+              python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('result',{}).get('id',''))")
+            if [ -z "$CREATED" ]; then
+              echo "❌ 创建 KV namespace 失败"; exit 1
+            fi
+            echo "kv_id=$CREATED" >> $GITHUB_OUTPUT
+            echo "✅ KV namespace 已创建: $CREATED"
+          fi
+
+      - name: Configure wrangler.jsonc (d1 mode)
+        if: github.event.inputs.db_mode == 'd1'
         env:
           D1_ID: ${{ steps.d1.outputs.d1_id }}
         run: |
           python3 << 'EOF'
           import json, re, os
-
           d1_id = os.environ['D1_ID'].strip()
-
-          with open('wrangler.jsonc', 'r', encoding='utf-8') as f:
-              content = f.read()
-
-          # 去掉 JSONC 注释(简单处理 // 行注释)
+          content = open('wrangler.jsonc', encoding='utf-8').read()
           content_no_comments = re.sub(r'^\s*//.*$', '', content, flags=re.M)
-
           cfg = json.loads(content_no_comments)
           cfg['d1_databases'] = [{
               'binding': 'DB',
               'database_name': 'one-api-cf',
               'database_id': d1_id,
           }]
-          # 分析数据直接使用 D1 的 usage_record 表, 无需 Analytics Engine
+          cfg.pop('analytics_engine_datasets', None)
+          cfg.pop('kv_namespaces', None)
+          cfg['compatibility_date'] = cfg.get('compatibility_date', '2025-04-28')
+          cfg['compatibility_flags'] = ['nodejs_compat']
+          open('wrangler.jsonc', 'w', encoding='utf-8').write(json.dumps(cfg, indent=2))
+          print("OK wrangler.jsonc (d1 mode): " + d1_id[:8] + "...")
+          EOF
+
+      - name: Configure wrangler.jsonc (kv mode)
+        if: github.event.inputs.db_mode == 'kv'
+        env:
+          KV_ID: ${{ steps.kv.outputs.kv_id }}
+        run: |
+          python3 << 'EOF'
+          import json, re, os
+          kv_id = os.environ['KV_ID'].strip()
+          content = open('wrangler.jsonc', encoding='utf-8').read()
+          content_no_comments = re.sub(r'^\s*//.*$', '', content, flags=re.M)
+          cfg = json.loads(content_no_comments)
+          cfg['kv_namespaces'] = [{
+              'binding': 'STORE',
+              'id': kv_id,
+          }]
+          cfg.pop('d1_databases', None)
           cfg.pop('analytics_engine_datasets', None)
           cfg['compatibility_date'] = cfg.get('compatibility_date', '2025-04-28')
-
-          with open('wrangler.jsonc', 'w', encoding='utf-8') as f:
-              json.dump(cfg, f, indent=2)
-          print("OK wrangler.jsonc updated: D1=" + d1_id[:8] + "...")
+          cfg['compatibility_flags'] = ['nodejs_compat']
+          open('wrangler.jsonc', 'w', encoding='utf-8').write(json.dumps(cfg, indent=2))
+          print("OK wrangler.jsonc (kv mode): " + kv_id[:8] + "...")
           EOF
 
       - name: Build

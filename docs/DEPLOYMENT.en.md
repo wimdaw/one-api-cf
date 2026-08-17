@@ -6,9 +6,25 @@ This project supports **four deployment methods** (Workers one-click / local man
 
 ---
 
+## Database Mode Selection (Important)
+
+Cloudflare deploys (Workers/Pages) support **two database backends** with identical features — pick either:
+
+| Mode | Description | Notes |
+|---|---|---|
+| **D1 (Recommended)** | Cloudflare native D1 (SQLite); `usage_record` stored directly | Full features, native queries |
+| **KV** | Cloudflare Key-Value + built-in sql-asm.js in-memory engine | No D1 needed; data persisted as a snapshot in KV; same UI/analytics |
+
+- **Feature-equivalent**: channels, tokens, settings, login, and the usage analytics dashboard all work in both modes.
+- **Workers deploy**: when manually triggering the workflow, pick `db_mode` = `d1` or `kv`; the corresponding resource is auto-created.
+- **Pages deploy**: in the Pages project **Settings → Bindings**, add **D1 Database (`DB`)** or **KV Namespace (`STORE`)**.
+- Both modes can be migrated anytime (export/import the database snapshot).
+
+---
+
 ## Option 1: GitHub Actions One-Click Auto-Deploy (Recommended)
 
-CI automatically handles: creating the D1 database, rewriting `wrangler.jsonc`, building, and deploying. No manual Cloudflare dashboard interaction required.
+CI automatically handles: database (D1 or KV) creation, rewriting `wrangler.jsonc`, building, and deploying. No manual Cloudflare dashboard interaction required.
 
 ### 1. Push code to your own GitHub repository
 
@@ -23,14 +39,14 @@ Repo → **Settings → Secrets and variables → Actions**, add these 3 Secrets
 
 | Secret | Description |
 |---|---|
-| `CF_API_TOKEN` | Cloudflare API Token; permissions must include **Workers edit, D1 database, account-level read/write** (analytics stored in D1, no Analytics Engine needed) |
+| `CF_API_TOKEN` | Cloudflare API Token; permissions must include **Workers edit, D1 database, account-level read/write** (analytics stored in the database, no Analytics Engine needed) |
 | `CF_ACCOUNT_ID` | Your Cloudflare account ID (found in the Dashboard bottom-right) |
 | `ADMIN_TOKEN` | Admin dashboard login token (custom; use a long random string) |
 
 ### 3. Trigger deploy
 
-- **Method A**: GitHub page → **Actions** → **Deploy to Cloudflare Workers** → **Run workflow**
-- **Method B**: push to the `main` branch to auto-trigger
+- **Method A (recommended, pick DB)**: GitHub page → **Actions** → **Deploy to Cloudflare Workers** → **Run workflow**, pick `db_mode` = `d1` or `kv` → run. The matching database is created automatically and deployed.
+- **Method B**: push to the `main` branch to auto-trigger (D1 mode by default).
 
 After deploy, the output shows a `*.workers.dev` domain.
 
@@ -47,7 +63,7 @@ For environments where you want manual control, or local debugging.
 ### 1. Prerequisites
 
 - [Bun 1.3+](https://bun.sh)
-- Cloudflare account (Workers + D1 permission; analytics stored in D1, no Analytics Engine needed)
+- Cloudflare account (Workers + D1 or KV permission; analytics stored in the database, no Analytics Engine needed)
 - wrangler installed (`bun add -g wrangler`, or bundled as a devDependency)
 
 ### 2. Install dependencies
@@ -58,6 +74,8 @@ bun install
 
 ### 3. Create Cloudflare resources
 
+**For D1 mode:**
+
 ```bash
 # Login
 bunx wrangler login
@@ -66,12 +84,20 @@ bunx wrangler login
 bunx wrangler d1 create one-api-cf
 ```
 
+**Or for KV mode:**
+
+```bash
+# Create a KV namespace, note the returned ID
+bunx wrangler kv namespace create one-api-cf-store
+```
+
 ### 4. Configure wrangler.jsonc
 
 Edit the file and fill in:
-- `d1_databases[].database_id` → your D1 database ID
+- **D1 mode**: `d1_databases[].database_id` → your D1 database ID (binding `DB`)
+- **KV mode**: `kv_namespaces[].id` → your KV namespace ID (binding `STORE`, see `wrangler.kv.jsonc`)
 
-> Usage analytics are written to the D1 `usage_record` table (auto-created on first migration); no separate analytics product needed.
+> Usage analytics are written to the `usage_record` table in the database (auto-created on first migration); no separate analytics product needed in either mode.
 
 ### 5. Set secrets
 
@@ -115,14 +141,15 @@ The repo already contains `.github/workflows/deploy-pages.yml`. Configure:
 **Create the Pages project manually in Cloudflare before first deploy**:
 
 1. Dashboard → **Workers & Pages** → **Create** → **Pages** → create empty project `one-api-cf`
-2. In the Pages project → **Settings → Bindings** add:
+2. In the Pages project → **Settings → Bindings** add (pick one):
    - **D1 Database** → `DB` → select your `one-api-cf` database (usage analytics also stored in this D1)
+   - or **KV Namespace** → `STORE` → select your `one-api-cf-store` namespace (KV mode)
 3. In the Pages project → **Settings → Environment variables** add:
    - `ADMIN_TOKEN` (admin dashboard token)
 
 Then manually trigger the **Deploy to Cloudflare Pages** workflow.
 
-> Note: Pages D1 binding is configured in **project Settings** (not in the wrangler config); `_worker.js` reads bindings with matching names automatically.
+> Note: Pages D1/KV bindings are configured in **project Settings** (not in the wrangler config); `_worker.js` reads bindings with matching names automatically.
 
 ---
 
