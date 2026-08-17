@@ -135,6 +135,11 @@ CREATE TABLE IF NOT EXISTS redemption (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS channel_key_health (
+    channel_key TEXT PRIMARY KEY,
+    health_json TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_admin_login_challenge_expires_at
     ON admin_login_challenge (expires_at);
 CREATE INDEX IF NOT EXISTS idx_admin_session_expires_at
