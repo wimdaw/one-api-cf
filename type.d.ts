@@ -158,6 +158,7 @@ type WebsiteConfig = {
     logo: string;
     footer: string;
     homeContent: string;
+    allowRegister: boolean; // 是否开放前台注册 (默认 true)
 }
 
 type ApiTokenData = {

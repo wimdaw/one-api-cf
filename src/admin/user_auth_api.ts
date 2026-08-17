@@ -16,6 +16,7 @@ import {
     setAdminSessionCookie,
     clearAdminSessionCookie,
 } from "./auth_shared";
+import { getSystemConfig } from "../system-config";
 
 // 用户注册/登录 API (one-api 移植, 保持现有风格)
 
@@ -34,6 +35,12 @@ export const UserRegisterEndpoint = {
             return c.json({ success: false, error: parsed.error.issues[0]?.message }, 400);
         }
         const { username, password, display_name, inviter_code } = parsed.data;
+
+        // 后台开关: 关闭注册时拒绝前台注册 (管理员仍可手动建号)
+        const systemConfig = await getSystemConfig(c);
+        if (!systemConfig.website.allowRegister) {
+            return c.json({ success: false, error: "Registration is disabled" }, 403);
+        }
 
         const existing = await findUserByUsername(c, username);
         if (existing) {

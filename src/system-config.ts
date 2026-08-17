@@ -29,6 +29,7 @@ export const DEFAULT_WEBSITE_CONFIG: WebsiteConfig = {
     logo: "",
     footer: "",
     homeContent: "",
+    allowRegister: true,
 };
 
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
@@ -122,6 +123,7 @@ const normalizeWebsiteConfig = (value: Partial<WebsiteConfig> | undefined): Webs
         logo: typeof v.logo === "string" ? v.logo.trim() : "",
         footer: typeof v.footer === "string" ? v.footer.trim() : "",
         homeContent: typeof v.homeContent === "string" ? v.homeContent.trim() : "",
+        allowRegister: typeof v.allowRegister === "boolean" ? v.allowRegister : true,
     };
 };
 

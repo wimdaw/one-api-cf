@@ -474,7 +474,9 @@
     "homeContent": "Homepage Description",
     "homeContentPlaceholder": "Intro text under the homepage title",
     "footer": "Footer",
-    "footerPlaceholder": "Text shown in the footer"
+    "footerPlaceholder": "Text shown in the footer",
+    "allowRegister": "Allow public registration",
+    "allowRegisterHint": "When off, the register button is hidden and the register API returns 403; admins can still create users manually"
   },
   "notFound": {
     "title": "Page Not Found",

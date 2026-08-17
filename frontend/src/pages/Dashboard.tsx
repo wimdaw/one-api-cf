@@ -120,13 +120,15 @@ export function Dashboard() {
                 {t('auth.login')}
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
-              <Button
-                size="lg"
-                onClick={() => setShowRegister(true)}
-                className="h-12 px-6 text-[15px] shadow-lg shadow-primary/20"
-              >
-                {t('dashboard.register')}
-              </Button>
+              {website?.allowRegister !== false && (
+                <Button
+                  size="lg"
+                  onClick={() => setShowRegister(true)}
+                  className="h-12 px-6 text-[15px] shadow-lg shadow-primary/20"
+                >
+                  {t('dashboard.register')}
+                </Button>
+              )}
             </div>
           </div>
         </div>

@@ -524,6 +524,21 @@ export function SystemSettings() {
               }))}
             />
           </div>
+          <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium">{t('settings.allowRegister')}</div>
+                <p className="mt-1 text-xs text-muted-foreground">{t('settings.allowRegisterHint')}</p>
+              </div>
+              <Switch
+                checked={normalizedSystemConfig.website?.allowRegister ?? true}
+                onCheckedChange={(checked) => setSystemConfig((current) => ({
+                  ...current,
+                  website: { ...current.website, allowRegister: checked },
+                }))}
+              />
+            </div>
+          </div>
         </section>
       </Card>
     </PageContainer>

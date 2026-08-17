@@ -474,7 +474,9 @@
     "homeContent": "首页描述",
     "homeContentPlaceholder": "首页主标题下方的介绍文字",
     "footer": "页脚文案",
-    "footerPlaceholder": "页脚显示的文字"
+    "footerPlaceholder": "页脚显示的文字",
+    "allowRegister": "允许前台注册",
+    "allowRegisterHint": "关闭后前台首页隐藏注册按钮，注册接口返回 403；管理员仍可手动创建用户"
   },
   "notFound": {
     "title": "页面不存在",

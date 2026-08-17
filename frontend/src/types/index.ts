@@ -74,6 +74,7 @@ export interface WebsiteConfig {
   logo: string
   footer: string
   homeContent: string
+  allowRegister: boolean
 }
 
 export interface AdminLoginResponse {
