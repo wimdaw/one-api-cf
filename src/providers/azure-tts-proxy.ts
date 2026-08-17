@@ -1,94 +1,105 @@
 import { Context } from "hono";
-import WebSocket from "ws";
 
 // 微软 Edge TTS 免费语音代理 (azure-tts)
 // 接收 OpenAI 兼容 POST /v1/audio/speech { model, input, voice?, rate?, volume?, pitch? }
-// → 调用微软 Edge 在线语音服务(免费) → 返回 audio/mpeg 流
+// → 调用微软 Translator endpoint + cognitiveservices TTS (纯 HTTP, Workers 兼容) → audio/mpeg 流
 // 音色/语速/音量/音调均来自渠道配置(config), 请求体参数可临时覆盖。
 //
-// 协议要点:
-//  - Sec-MS-GEC = SHA-256 摘要(windowsTicks + trustedClientToken) 转大写 hex (纯哈希, 非 HMAC)
-//  - WebSocket 连接需带 UA + Origin 头
-//  - 发送 speech.config(JSON) + ssml 两条消息, 接收二进制音频帧直至 Path:turn.end
-
-const TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
-const WSS_URL = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1";
-const SEC_MS_GEC_VERSION = "1-143.0.3650.96";
-const JSON_XML_DELIM = "\r\n\r\n";
-const AUDIO_DELIM = "Path:audio\r\n";
+// 协议要点 (参考 linshenkx/edge-tts-openai-cf-worker):
+//  1) POST dev.microsofttranslator.com/apps/endpoint 获取 JWT token + 区域 (X-MT-Signature HMAC 签名)
+//  2) POST https://<region>.tts.speech.microsoft.com/cognitiveservices/v1 携带 SSML → 音频
+//  全部使用标准 fetch + Web Crypto, Cloudflare Workers / Node 均兼容。
 
 const DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural";
+const TOKEN_REFRESH_BEFORE_EXPIRY = 5 * 60; // 提前 5 分钟刷新 token
+const ENDPOINT_URL = "https://dev.microsofttranslator.com/apps/endpoint?api-version=1.0";
+const MT_SIGNING_KEY_B64 = "oik6PdDdMnOXemTbwvMn9de/h9lFnfBaCWbGMMZqqoSaQaqUOqjVGm5NqsmjcBI1x+sS9ugjB55HEJWRiFXYFw==";
 
-const generateUuid = (): string => {
-    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-        return crypto.randomUUID();
+let tokenInfo: { r: string; t: string; expiredAt: number } | null = null;
+
+const uuid = (): string => crypto.randomUUID().replace(/-/g, "");
+
+const hmacSha256 = async (key: Uint8Array, data: string): Promise<Uint8Array> => {
+    const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: { name: "SHA-256" } }, false, ["sign"]);
+    return new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(data)));
+};
+
+const base64ToBytes = (b64: string): Uint8Array => {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+};
+
+const bytesToBase64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
+
+const dateFormat = (): string => new Date().toUTCString().replace(/GMT/, "").trim() + " GMT";
+
+// 生成 X-MT-Signature (MSTranslatorAndroidApp HMAC)
+const sign = async (urlStr: string): Promise<string> => {
+    const url = urlStr.split("://")[1];
+    const encodedUrl = encodeURIComponent(url);
+    const uuidStr = uuid();
+    const d = dateFormat();
+    const bytesToSign = `MSTranslatorAndroidApp${encodedUrl}${d}${uuidStr}`.toLowerCase();
+    const key = base64ToBytes(MT_SIGNING_KEY_B64);
+    const sig = await hmacSha256(key, bytesToSign);
+    return `MSTranslatorAndroidApp::${bytesToBase64(sig)}::${d}::${uuidStr}`;
+};
+
+// 获取 (并缓存) endpoint token
+const getEndpoint = async (): Promise<{ r: string; t: string }> => {
+    const now = Date.now() / 1000;
+    if (tokenInfo && tokenInfo.t && tokenInfo.expiredAt && now < tokenInfo.expiredAt - TOKEN_REFRESH_BEFORE_EXPIRY) {
+        return tokenInfo;
     }
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (ch) => {
-        const r = (Math.random() * 16) | 0;
-        const v = ch === "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-    });
-};
 
-// 16 位随机 hex (X-RequestId)
-const randomHex = (length: number): string => {
-    const bytes = new Uint8Array(length);
-    if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
-        crypto.getRandomValues(bytes);
-    } else {
-        for (let i = 0; i < length; i++) bytes[i] = Math.floor(Math.random() * 256);
-    }
-    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-};
-
-// 生成 Sec-MS-GEC: 纯 SHA-256 摘要 (非 HMAC!)
-const generateSecMsGec = async (trustedClientToken: string): Promise<string> => {
-    const ticks = Math.floor(Date.now() / 1000) + 11644473600;
-    const rounded = ticks - (ticks % 300);
-    const windowsTicks = rounded * 10000000;
-    const encoder = new TextEncoder();
-    const data = encoder.encode(`${windowsTicks}${trustedClientToken}`);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    return Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("")
-        .toUpperCase();
-};
-
-const buildSpeechConfigMessage = (): string => {
-    return `Content-Type:application/json; charset=utf-8\r\nPath:speech.config${JSON_XML_DELIM}${JSON.stringify({
-        context: {
-            synthesis: {
-                audio: {
-                    metadataoptions: {
-                        sentenceBoundaryEnabled: "false",
-                        wordBoundaryEnabled: "false",
-                    },
-                    outputFormat: "audio-24khz-48kbitrate-mono-mp3",
-                },
-            },
+    const clientId = uuid();
+    const response = await fetch(ENDPOINT_URL, {
+        method: "POST",
+        headers: {
+            "Accept-Language": "zh-Hans",
+            "X-ClientVersion": "4.0.530a 5fe1dc6c",
+            "X-UserId": "0f04d16a175c411e",
+            "X-HomeGeographicRegion": "zh-Hans-CN",
+            "X-ClientTraceId": clientId,
+            "X-MT-Signature": await sign(ENDPOINT_URL),
+            "User-Agent": "okhttp/4.5.0",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "0",
+            "Accept-Encoding": "gzip",
         },
-    })}`;
+    });
+
+    if (!response.ok) {
+        throw new Error(`Azure TTS: endpoint token failed (${response.status})`);
+    }
+
+    const data = (await response.json()) as { r?: string; t?: string };
+    if (!data.t) {
+        throw new Error("Azure TTS: endpoint token missing");
+    }
+
+    let expiredAt = now + 3600;
+    try {
+        const payload = JSON.parse(atob(data.t.split(".")[1]));
+        if (typeof payload.exp === "number") expiredAt = payload.exp;
+    } catch { /* ignore */ }
+
+    tokenInfo = { r: data.r || "eastus", t: data.t, expiredAt };
+    return tokenInfo;
 };
 
-const buildSsmlMessage = (
-    text: string,
-    voice: string,
-    rate: string,
-    volume: string,
-    pitch: string
-): string => {
+const buildSsml = (text: string, voice: string, rate: string, volume: string, pitch: string): string => {
     const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const locale = voice.split("-").slice(0, 2).join("-");
-    const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="${locale}">
+    return `<speak xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" version="1.0" xml:lang="${locale}">
     <voice name="${voice}">
-        <prosody pitch="${pitch}" rate="${rate}" volume="${volume}">
+        <prosody rate="${rate}" pitch="${pitch}" volume="${volume}">
             ${escaped}
         </prosody>
     </voice>
 </speak>`;
-    const requestId = randomHex(16);
-    return `X-RequestId:${requestId}\r\nContent-Type:application/ssml+xml\r\nPath:ssml${JSON_XML_DELIM}${ssml.trim()}`;
 };
 
 const normalizeRate = (v?: string): string => {
@@ -102,10 +113,10 @@ const normalizeVolume = (v?: string): string => {
 };
 const normalizePitch = (v?: string): string => {
     const s = (v || "").trim();
-    return /^[+-]?\d+Hz$/.test(s) ? s : "+0Hz";
+    return /^[+-]?\d+(Hz|%)$/.test(s) ? s : "+0Hz";
 };
 
-// 核心: 通过 WebSocket 合成语音, 返回 MP3 Buffer
+// 核心: HTTP 合成语音, 返回 MP3 ArrayBuffer
 export const synthesizeAzureTts = async (
     text: string,
     options: { voice?: string; rate?: string; volume?: string; pitch?: string } = {},
@@ -116,89 +127,41 @@ export const synthesizeAzureTts = async (
     const volume = normalizeVolume(options.volume);
     const pitch = normalizePitch(options.pitch);
 
-    const secMsGec = await generateSecMsGec(TRUSTED_CLIENT_TOKEN);
-    const url = `${WSS_URL}?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}&Sec-MS-GEC=${secMsGec}&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}&ConnectionId=${generateUuid()}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const chunks: Buffer[] = [];
-    let settled = false;
+    try {
+        const endpoint = await getEndpoint();
+        const url = `https://${endpoint.r}.tts.speech.microsoft.com/cognitiveservices/v1`;
+        const ssml = buildSsml(text, voice, rate, volume, pitch);
 
-    return new Promise((resolve, reject) => {
-        let ws: WebSocket;
-        try {
-            ws = new WebSocket(url, {
-                headers: {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0",
-                    Origin: "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold",
-                },
-            });
-        } catch (error) {
-            reject(new Error(`Azure TTS: WebSocket init failed - ${(error as Error).message}`));
-            return;
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": endpoint.t,
+                "Content-Type": "application/ssml+xml",
+                "User-Agent": "okhttp/4.5.0",
+                "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
+            },
+            body: ssml,
+            signal: controller.signal,
+        });
+
+        if (!response.ok) {
+            const errorText = (await response.text()).slice(0, 300);
+            throw new Error(`Azure TTS: upstream ${response.status} - ${errorText}`);
         }
 
-        const timer = setTimeout(() => {
-            if (!settled) {
-                settled = true;
-                try { ws.close(); } catch { /* ignore */ }
-                reject(new Error("Azure TTS: synthesis timeout"));
-            }
-        }, timeoutMs);
-
-        ws.on("open", () => {
-            ws.send(buildSpeechConfigMessage());
-            ws.send(buildSsmlMessage(text, voice, rate, volume, pitch));
-        });
-
-        ws.on("message", (data, isBinary) => {
-            if (settled) return;
-            if (isBinary) {
-                // 二进制帧 = 音频头(Path:audio\r\n) + MP3 数据
-                const buffer = Buffer.from(data as Buffer);
-                const delimIndex = buffer.indexOf(AUDIO_DELIM);
-                const audioData = delimIndex >= 0
-                    ? buffer.subarray(delimIndex + AUDIO_DELIM.length)
-                    : buffer;
-                if (audioData.length > 0) {
-                    chunks.push(audioData);
-                }
-            } else {
-                const message = data.toString();
-                const pathMatch = message.match(/Path:(\S+)/);
-                const path = pathMatch ? pathMatch[1] : "";
-                if (message.includes("Path:turn.end")) {
-                    settled = true;
-                    clearTimeout(timer);
-                    try { ws.close(); } catch { /* ignore */ }
-                    resolve({ audio: new Uint8Array(Buffer.concat(chunks)), usedVoice: voice });
-                } else if (path === "error" || message.includes("Path:error")) {
-                    settled = true;
-                    clearTimeout(timer);
-                    try { ws.close(); } catch { /* ignore */ }
-                    reject(new Error(`Azure TTS: upstream error - ${message.slice(0, 200)}`));
-                }
-            }
-        });
-
-        ws.on("error", (error) => {
-            if (!settled) {
-                settled = true;
-                clearTimeout(timer);
-                reject(new Error(`Azure TTS: websocket error - ${error.message}`));
-            }
-        });
-
-        ws.on("close", () => {
-            if (!settled) {
-                settled = true;
-                clearTimeout(timer);
-                if (chunks.length > 0) {
-                    resolve({ audio: new Uint8Array(Buffer.concat(chunks)), usedVoice: voice });
-                } else {
-                    reject(new Error("Azure TTS: connection closed before audio received"));
-                }
-            }
-        });
-    });
+        const buffer = await response.arrayBuffer();
+        return { audio: new Uint8Array(buffer), usedVoice: voice };
+    } catch (error) {
+        if ((error as Error).name === "AbortError") {
+            throw new Error("Azure TTS: synthesis timeout");
+        }
+        throw error;
+    } finally {
+        clearTimeout(timer);
+    }
 };
 
 // OpenAI 兼容 handler: POST /v1/audio/speech
