@@ -7,6 +7,16 @@ import { normalizeChannelConfig } from "../channel-config";
 import { TokenUtils } from "../admin/token_utils";
 import { CONSTANTS } from "../constants";
 
+// 模型列表内存缓存 (Workers 单实例内生效)。
+// 同一 token 的 channel_keys 不变时, 模型列表结果相同, 无需每次查 D1。
+const MODELS_CACHE_TTL_MS = 60_000;
+const modelsCache = new Map<string, { expiresAt: number; json: unknown }>();
+
+// 全量失效: 渠道/定价配置变更时调用 (admin channel_api / pricing_api)
+export const invalidateModelsCache = () => {
+    modelsCache.clear();
+};
+
 export class ModelsEndpoint extends OpenAPIRoute {
     schema = {
         tags: ['OpenAI Proxy'],
@@ -43,18 +53,29 @@ export class ModelsEndpoint extends OpenAPIRoute {
             return c.json({ object: "list", data: [] });
         }
 
+        // 校验 token(轻量, 查库) 后构造缓存键
         const tokenInfo = await fetchTokenData(c, apiKey);
         if (!tokenInfo) {
             return c.text("Invalid API key", 401);
+        }
+        const channelKeys = Array.isArray(tokenInfo.tokenData.channel_keys)
+            ? [...tokenInfo.tokenData.channel_keys].sort()
+            : [];
+
+        // 内存缓存命中则直接返回 (同一 token + 同样渠道, 60s 内结果不变)
+        const cacheKey = `tk:${apiKey}:ch:${channelKeys.join(",")}`;
+        const now = Date.now();
+        const cached = modelsCache.get(cacheKey);
+        if (cached && cached.expiresAt > now) {
+            return c.json(cached.json);
         }
 
         const channelsResult = await fetchChannelsForToken(c, tokenInfo.tokenData);
 
         if (!channelsResult || !channelsResult.results || channelsResult.results.length === 0) {
-            return c.json({
-                object: "list",
-                data: [],
-            });
+            const empty = { object: "list" as const, data: [] };
+            modelsCache.set(cacheKey, { expiresAt: now + MODELS_CACHE_TTL_MS, json: empty });
+            return c.json(empty);
         }
 
         const modelsSet = new Set<string>();
@@ -92,9 +113,11 @@ export class ModelsEndpoint extends OpenAPIRoute {
             owned_by: "system",
         }));
 
-        return c.json({
-            object: "list",
+        const payload = {
+            object: "list" as const,
             data: models,
-        });
+        };
+        modelsCache.set(cacheKey, { expiresAt: now + MODELS_CACHE_TTL_MS, json: payload });
+        return c.json(payload);
     }
 }

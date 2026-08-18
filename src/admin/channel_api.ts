@@ -246,6 +246,10 @@ export class ChannelUpsertEndpoint extends OpenAPIRoute {
             return c.text('Failed to upsert channel config', 500);
         }
 
+        // 渠道变更 → 模型列表缓存失效
+        const { invalidateModelsCache } = await import("../providers/models");
+        invalidateModelsCache();
+
         return {
             success: true,
             data: true

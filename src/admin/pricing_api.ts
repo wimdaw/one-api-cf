@@ -151,6 +151,10 @@ export class PricingUpdateEndpoint extends OpenAPIRoute {
             JSON.stringify(normalizedConfig)
         );
 
+        // 定价变更 → 模型列表缓存失效(模型免费/付费判定可能变化)
+        const { invalidateModelsCache } = await import("../providers/models");
+        invalidateModelsCache();
+
         return {
             success: true,
             message: "Pricing config updated successfully"
