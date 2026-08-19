@@ -34,10 +34,18 @@ export const RedemptionCreateEndpoint = {
 // 兑换码列表
 export const RedemptionListEndpoint = {
     handler: async (c: Context<HonoCustomType>) => {
-        const result = await c.env.DB.prepare(
-            `SELECT id, code, quota, count, redeemed_count, status, created_at
-             FROM redemption ORDER BY id DESC LIMIT 200`
-        ).all();
+        const keyword = c.req.query("keyword")?.trim();
+        let sql = `SELECT id, code, quota, count, redeemed_count, status, created_at
+             FROM redemption`;
+        const params: unknown[] = [];
+        if (keyword) {
+            // 支持不带连字符的模糊搜索
+            sql += ` WHERE code LIKE ? OR replace(code, '-', '') LIKE ?`;
+            const like = `%${keyword}%`;
+            params.push(like, like);
+        }
+        sql += ` ORDER BY id DESC LIMIT 200`;
+        const result = await c.env.DB.prepare(sql).bind(...params).all();
         return c.json({ success: true, data: { redemptions: result.results || [] } });
     },
 };

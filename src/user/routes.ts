@@ -295,6 +295,182 @@ async function myChannels(c: Context<HonoCustomType>) {
     return c.json({ success: true, data: result });
 }
 
+// 我的日志: 分页查看自己令牌的调用记录 (移植自 one-api GetUserLogs)
+async function myLogs(c: Context<HonoCustomType>) {
+    const user = getCurrentUser(c);
+    if (!user) {
+        return c.json({ success: false, error: "Unauthorized" }, 401);
+    }
+    const { collectUserTokenHashes } = await import("../admin/log_api");
+
+    const url = new URL(c.req.url);
+    const page = url.searchParams.get("page") || "1";
+    const dimension = url.searchParams.get("dimension") || "model";
+    const keyword = url.searchParams.get("keyword") || "";
+    const result = url.searchParams.get("result") || "all";
+    const start = url.searchParams.get("start") || "";
+    const end = url.searchParams.get("end") || "";
+
+    const hashes = await collectUserTokenHashes(c, user.id);
+    if (hashes.length === 0) {
+        return c.json({
+            success: true,
+            data: {
+                page: 1,
+                pageSize: 50,
+                total: 0,
+                totalPages: 0,
+                items: [],
+            },
+        });
+    }
+
+    // 复用本地查询, 附加 token 过滤 (仅自己令牌)
+    const { queryUsageLogRecords } = await import("../analytics/query");
+    const resultData = await queryUsageLogRecords(c, {
+        start,
+        end,
+        dimension,
+        keyword,
+        result,
+        page,
+        tokenHashes: hashes,
+    });
+
+    return c.json({ success: true, data: resultData });
+}
+
+// 我的日志统计: 自己令牌的消耗汇总 (移植自 one-api GetLogsSelfStat)
+async function myLogStat(c: Context<HonoCustomType>) {
+    const user = getCurrentUser(c);
+    if (!user) {
+        return c.json({ success: false, error: "Unauthorized" }, 401);
+    }
+    const { collectUserTokenHashes, queryLogStat } = await import("../admin/log_api");
+
+    const url = new URL(c.req.url);
+    const hashes = await collectUserTokenHashes(c, user.id);
+    const stat = await queryLogStat(c, {
+        start: url.searchParams.get("start") || "",
+        end: url.searchParams.get("end") || "",
+        tokenHashes: hashes,
+    });
+    return c.json({ success: true, data: stat });
+}
+
+// 我的可用模型: 聚合当前用户可见渠道的全部模型 (移植自 one-api GetUserAvailableModels)
+// 返回 OpenAI /v1/models 风格列表, 按渠道分组附带渠道 key
+async function myAvailableModels(c: Context<HonoCustomType>) {
+    const user = getCurrentUser(c);
+    if (!user) {
+        return c.json({ success: false, error: "Unauthorized" }, 401);
+    }
+
+    // 复用 myChannels 的权限过滤逻辑: 返回该用户可见的渠道
+    const channelRows = await c.env.DB.prepare(
+        "SELECT key, value FROM channel_config"
+    ).all<{ key: string; value: string }>();
+
+    const tokenRows = await c.env.DB.prepare(
+        "SELECT key, value FROM api_token"
+    ).all<{ key: string; value: string }>();
+
+    const allowedChannels = new Set<string>();
+    let allChannels = true;
+    for (const row of tokenRows.results || []) {
+        try {
+            const data = JSON.parse(row.value);
+            if (data.user_id === user.id) {
+                const keys = data.channel_keys;
+                if (Array.isArray(keys) && keys.length > 0) {
+                    keys.forEach((k: string) => allowedChannels.add(k));
+                } else {
+                    // 空 channel_keys = 有全部渠道权限
+                    allowedChannels.clear();
+                    allChannels = true;
+                    break;
+                }
+            }
+        } catch { continue; }
+    }
+    if (allowedChannels.size === 0 && !allChannels) {
+        allChannels = true;
+    }
+
+    const models: Array<Record<string, unknown>> = [];
+    const seen = new Set<string>();
+
+    for (const row of channelRows.results || []) {
+        if (!allChannels && !allowedChannels.has(row.key)) {
+            continue;
+        }
+        try {
+            const config = JSON.parse(row.value) as ChannelConfig;
+            if (config.enabled === false) continue;
+            const channelModels = Array.isArray(config.models) ? config.models : [];
+            for (const m of channelModels) {
+                if (m.enabled === false) continue;
+                const modelId = typeof m.name === "string" ? m.name : m.id;
+                if (!modelId || seen.has(modelId)) continue;
+                seen.add(modelId);
+                models.push({
+                    id: modelId,
+                    object: "model",
+                    created: 1626777600,
+                    owned_by: config.name || "channel",
+                    channel_key: row.key,
+                });
+            }
+        } catch { continue; }
+    }
+
+    return c.json({
+        success: true,
+        data: {
+            object: "list",
+            data: models,
+        },
+    });
+}
+
+// 我的仪表盘: 概览统计 + 近 7 天趋势 (移植自 one-api GetUserDashboard, 用现有 analytics 数据)
+async function myDashboard(c: Context<HonoCustomType>) {
+    const user = getCurrentUser(c);
+    if (!user) {
+        return c.json({ success: false, error: "Unauthorized" }, 401);
+    }
+
+    const { collectUserTokenHashes } = await import("../admin/log_api");
+    const { queryLocalUsageOverview, queryLocalUsageTrend } = await import("../analytics/db-query");
+
+    const hashes = await collectUserTokenHashes(c, user.id);
+    const overview = hashes.length === 0
+        ? { requests: 0, successes: 0, total_cost: 0, total_tokens: 0, prompt_tokens: 0, completion_tokens: 0, successRate: 0 }
+        : await queryLocalUsageOverview(c, "30d", hashes);
+    const trend = hashes.length === 0 ? [] : await queryLocalUsageTrend(c, "7d", hashes);
+
+    return c.json({
+        success: true,
+        data: {
+            profile: {
+                id: user.id,
+                username: user.username,
+                display_name: user.display_name,
+                role: user.role,
+                user_group: user.user_group || "default",
+                quota: user.quota === -1 ? -1 : rawToDollars(user.quota),
+                used_quota: rawToDollars(user.used_quota || 0),
+                balance: user.quota === -1 ? -1 : Math.max(0, rawToDollars(user.quota - (user.used_quota || 0))),
+                request_count: user.request_count || 0,
+                aff_code: user.aff_code || "",
+                created_at: user.created_at,
+            },
+            overview,
+            trend,
+        },
+    });
+}
+
 // 注册用户自助路由
 export function registerUserApi(app: any) {
     app.get("/api/user/token", requireUser, MyTokenListEndpoint.handler);
@@ -308,4 +484,16 @@ export function registerUserApi(app: any) {
     app.post("/api/user/redeem", requireUser, redeemCode);
     app.get("/api/user/analytics", requireUser, myAnalytics);
     app.get("/api/user/channels", requireUser, myChannels);
+    app.get("/api/user/log", requireUser, myLogs);
+    app.get("/api/user/log/stat", requireUser, myLogStat);
+    app.get("/api/user/models", requireUser, myAvailableModels);
+    app.get("/api/user/dashboard", requireUser, myDashboard);
+    app.post("/api/user/email/verify", requireUser, async (c: any) => {
+        const { VerifyEmailEndpoint } = await import("../email_api");
+        return VerifyEmailEndpoint.handler(c);
+    });
+    app.post("/api/user/email/bind", requireUser, async (c: any) => {
+        const { BindEmailEndpoint } = await import("../email_api");
+        return BindEmailEndpoint.handler(c);
+    });
 }

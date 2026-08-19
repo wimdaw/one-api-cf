@@ -3,7 +3,7 @@ import { fromHono } from 'chanfana';
 import { DBInitializeEndpoint } from "./db_api"
 import db from "../db"
 import {
-    ChannelGetEndpoint, ChannelUpsertEndpoint, ChannelDeleteEndpoint, ChannelFetchModelsEndpoint, ChannelTestModelEndpoint
+    ChannelGetEndpoint, ChannelUpsertEndpoint, ChannelDeleteEndpoint, ChannelFetchModelsEndpoint, ChannelTestModelEndpoint, deleteDisabledChannels
 } from "./channel_api"
 import {
     TokenListEndpoint, TokenUpsertEndpoint, TokenDeleteEndpoint, TokenResetUsageEndpoint
@@ -15,9 +15,19 @@ import {
     BillingConfigGetEndpoint, BillingConfigUpdateEndpoint
 } from "./billing_api"
 import {
+    AdminTopUpEndpoint, TopUpRecordListEndpoint
+} from "./billing_api"
+import {
+    GroupListEndpoint,
+    GroupSetUserEndpoint,
+    GroupSetChannelEndpoint,
+    GroupGetChannelEndpoint,
+} from "./group_api"
+import {
     SystemConfigGetEndpoint,
     SystemConfigUpdateEndpoint,
     TelegramTestMessageEndpoint,
+    MailTestEndpoint,
 } from "./system_api"
 import {
     AdminLoginStartEndpoint,
@@ -32,11 +42,17 @@ import {
     UsageLogSearchEndpoint,
 } from "./analytics_api"
 import {
+    LogStatEndpoint,
+    LogCleanupEndpoint,
+    AdminLogSearchEndpoint,
+} from "./log_api"
+import {
     UserListEndpoint,
     UserCreateEndpoint,
     UserUpdateEndpoint,
     UserDeleteEndpoint,
     UserSelfEndpoint,
+    UserManageEndpoint,
 } from "./user_api"
 import {
     UserRegisterEndpoint,
@@ -55,6 +71,14 @@ import {
 } from "./invite_code_api"
 import { getSystemConfig, isTelegramSecurityEnabled } from "../system-config"
 import { t } from "../i18n"
+import { CONSTANTS } from "../constants"
+import {
+    SendVerificationEndpoint,
+    SendResetPasswordEndpoint,
+    ResetPasswordEndpoint,
+    VerifyEmailEndpoint,
+    BindEmailEndpoint,
+} from "../email_api"
 import {
     clearAdminSessionCookie,
     getAdminSessionTokenFromRequest,
@@ -136,6 +160,11 @@ app.post("/api/admin/user/register", UserRegisterEndpoint.handler)
 app.post("/api/admin/user/login", UserLoginEndpoint.handler)
 app.post("/api/admin/user/logout", UserLogoutEndpoint.handler)
 
+// 邮箱路由 (公开: 发验证码/重置邮件)
+app.get("/api/verification", SendVerificationEndpoint.handler)
+app.get("/api/reset_password", SendResetPasswordEndpoint.handler)
+app.post("/api/user/reset", ResetPasswordEndpoint.handler)
+
 // Authentication routes
 api.post("/api/admin/auth/login", AdminLoginStartEndpoint)
 api.post("/api/admin/auth/verify", AdminLoginVerifyEndpoint)
@@ -158,9 +187,12 @@ api.get("/api/admin/pricing", PricingGetEndpoint)
 api.post("/api/admin/pricing", PricingUpdateEndpoint)
 api.get("/api/admin/billing/config", BillingConfigGetEndpoint)
 api.post("/api/admin/billing/config", BillingConfigUpdateEndpoint)
+api.post("/api/admin/topup", AdminTopUpEndpoint)
+api.get("/api/admin/topup/records", TopUpRecordListEndpoint)
 api.get("/api/admin/system/config", SystemConfigGetEndpoint)
 api.post("/api/admin/system/config", SystemConfigUpdateEndpoint)
 api.post("/api/admin/system/telegram/test", TelegramTestMessageEndpoint)
+api.post("/api/admin/system/mail/test", MailTestEndpoint)
 
 // Analytics management routes
 api.get("/api/admin/analytics/overview", AnalyticsOverviewEndpoint)
@@ -169,12 +201,27 @@ api.get("/api/admin/analytics/breakdown", AnalyticsBreakdownEndpoint)
 api.get("/api/admin/analytics/events", AnalyticsEventsEndpoint)
 api.get("/api/admin/usage-logs", UsageLogSearchEndpoint)
 
+// 日志系统路由 (移植自 one-api: 统计/清理/搜索)
+api.get("/api/admin/log/stat", LogStatEndpoint)
+api.delete("/api/admin/log", LogCleanupEndpoint)
+api.get("/api/admin/log/search", AdminLogSearchEndpoint)
+
+// 用户组路由 (移植自 one-api: group)
+api.get("/api/admin/group", GroupListEndpoint)
+api.post("/api/admin/group/user", GroupSetUserEndpoint)
+api.post("/api/admin/group/channel/:key", GroupSetChannelEndpoint)
+api.get("/api/admin/group/channel/:key", GroupGetChannelEndpoint)
+
 // User management routes (admin) - Hono 原生
 app.get("/api/admin/user", UserListEndpoint.handler)
 app.post("/api/admin/user", UserCreateEndpoint.handler)
 app.get("/api/admin/user/self", UserSelfEndpoint.handler)
 app.put("/api/admin/user/:id", UserUpdateEndpoint.handler)
 app.delete("/api/admin/user/:id", UserDeleteEndpoint.handler)
+app.post("/api/admin/user/manage", UserManageEndpoint.handler)
+
+// Channel management routes
+app.delete("/api/admin/channel/disabled", deleteDisabledChannels)
 
 // 用户自助路由 (/api/user/*): 登录即可访问, 不要求管理员
 registerUserApi(app)
@@ -194,6 +241,35 @@ app.get("/api/system/config", async (c) => {
         success: true,
         data: {
             website: systemConfig.website || {},
+        },
+    });
+})
+
+// 公开站点信息 (移植自 one-api: notice/about/home_page_content/status)
+app.get("/api/notice", async (c) => {
+    const systemConfig = await getSystemConfig(c);
+    return c.json({ success: true, data: systemConfig.website?.notice || "" });
+})
+
+app.get("/api/about", async (c) => {
+    const systemConfig = await getSystemConfig(c);
+    return c.json({ success: true, data: systemConfig.website?.about || "" });
+})
+
+app.get("/api/home_page_content", async (c) => {
+    const systemConfig = await getSystemConfig(c);
+    return c.json({ success: true, data: systemConfig.website?.homeContent || "" });
+})
+
+app.get("/api/status", async (c) => {
+    const systemConfig = await getSystemConfig(c);
+    const mail = systemConfig.mail;
+    return c.json({
+        success: true,
+        data: {
+            version: CONSTANTS.VERSION,
+            email_verification: Boolean(mail?.fromEmail && (mail.apiKey || mail.smtpServer)),
+            allow_register: systemConfig.website?.allowRegister !== false,
         },
     });
 })

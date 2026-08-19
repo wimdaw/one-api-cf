@@ -122,7 +122,7 @@ export const queryUsageEvents = async (
 // ---- 日志检索 ----
 export const queryUsageLogRecords = async (
     c: Context<HonoCustomType>,
-    params: UsageLogQueryParams
+    params: UsageLogQueryParams & { tokenHashes?: string[] }
 ) => {
     return queryLocalUsageLogRecords(c, params);
 };

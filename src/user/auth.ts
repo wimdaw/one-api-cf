@@ -27,6 +27,12 @@ export type UserRow = {
     used_quota: number;
     inviter_id: number | null;
     aff_code: string | null;
+    github_id?: string;
+    wechat_id?: string;
+    lark_id?: string;
+    oidc_id?: string;
+    user_group?: string;
+    request_count?: number;
     created_at: string;
     updated_at: string;
 };

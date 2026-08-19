@@ -146,6 +146,8 @@
     "channelNamePlaceholder": "e.g. Azure GPT-4 East",
     "channelType": "Channel Type",
     "channelTypeRequired": "Channel Type",
+    "builtinTypes": "Built-in Types",
+    "compatiblePresets": "OpenAI-Compatible Presets",
     "channelWeight": "Weight",
     "channelWeightHint": "Higher weight is preferred for the same model; equal weights are randomly distributed.",
     "channelStatus": "Status",

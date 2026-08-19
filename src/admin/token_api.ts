@@ -10,6 +10,11 @@ export class TokenListEndpoint extends OpenAPIRoute {
     schema = {
         tags: ['Admin API'],
         summary: 'Get all tokens',
+        request: {
+            query: z.object({
+                keyword: z.string().optional(),
+            }),
+        },
         responses: {
             ...CommonSuccessfulResponse(z.array(z.object({
                 key: z.string(),
@@ -23,9 +28,17 @@ export class TokenListEndpoint extends OpenAPIRoute {
     };
 
     async handle(c: Context<HonoCustomType>) {
-        const result = await c.env.DB.prepare(
-            `SELECT * FROM api_token ORDER BY created_at DESC`
-        ).all<ApiTokenRow>();
+        const keyword = c.req.query("keyword")?.trim();
+        let sql = `SELECT * FROM api_token`;
+        const params: unknown[] = [];
+        if (keyword) {
+            // value 是 JSON (含 name), LIKE 匹配 key/name
+            sql += ` WHERE key LIKE ? OR value LIKE ?`;
+            const like = `%${keyword}%`;
+            params.push(like, like);
+        }
+        sql += ` ORDER BY created_at DESC`;
+        const result = await c.env.DB.prepare(sql).bind(...params).all<ApiTokenRow>();
 
         return {
             success: true,

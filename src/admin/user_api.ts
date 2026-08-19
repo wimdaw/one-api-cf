@@ -18,6 +18,7 @@ import { dollarsToRaw, rawToDollars } from "../billing";
 
 const userListInput = z.object({
     page: z.number().int().default(1),
+    keyword: z.string().optional(),
 });
 
 export const UserListEndpoint = {
@@ -26,9 +27,16 @@ export const UserListEndpoint = {
         query: userListInput,
     },
     handler: async (c: Context<HonoCustomType>) => {
-        const now = await c.env.DB.prepare(
-            "SELECT id, username, email, display_name, role, status, quota, used_quota, inviter_id, aff_code, created_at FROM users ORDER BY id ASC"
-        ).all();
+        const keyword = c.req.query("keyword")?.trim();
+        let sql = "SELECT id, username, email, display_name, role, status, quota, used_quota, inviter_id, aff_code, created_at FROM users";
+        const params: unknown[] = [];
+        if (keyword) {
+            sql += " WHERE username LIKE ? OR email LIKE ? OR display_name LIKE ?";
+            const like = `%${keyword}%`;
+            params.push(like, like, like);
+        }
+        sql += " ORDER BY id ASC";
+        const now = await c.env.DB.prepare(sql).bind(...params).all();
         const users = (now.results || []).map((row: any) => {
             const quotaRaw = Number(row.quota);
             const usedRaw = Number(row.used_quota || 0);
@@ -157,6 +165,73 @@ export const UserDeleteEndpoint = {
         }
         const result = await c.env.DB.prepare("DELETE FROM users WHERE id = ?").bind(id).run();
         return c.json({ success: true, data: { changes: result.meta?.changes } });
+    },
+};
+
+// 批量用户管理操作 (移植自 one-api ManageUser)
+// action: disable | enable | promote | demote
+export const UserManageEndpoint = {
+    summary: "Manage user (disable/enable/promote/demote)",
+    handler: async (c: Context<HonoCustomType>) => {
+        const body = await c.req.json().catch(() => ({}));
+        const id = Number(body.user_id ?? body.id);
+        const action = String(body.action || "");
+        if (!Number.isInteger(id) || id <= 0) {
+            return c.json({ success: false, error: "user_id is required" }, 400);
+        }
+        if (!["disable", "enable", "promote", "demote"].includes(action)) {
+            return c.json({ success: false, error: "Invalid action" }, 400);
+        }
+
+        const target = await findUserById(c, id);
+        if (!target) {
+            return c.json({ success: false, error: "User not found" }, 404);
+        }
+
+        // 权限保护: 不能操作 root 用户
+        if (target.role === ROLE_ROOT && action !== "enable") {
+            return c.json({ success: false, error: "Cannot manage root user" }, 403);
+        }
+
+        let sets: string[] = [];
+        switch (action) {
+            case "disable":
+                sets.push("status = 2");
+                break;
+            case "enable":
+                sets.push("status = 1");
+                break;
+            case "promote":
+                sets.push("role = 10");
+                break;
+            case "demote":
+                if (target.role === ROLE_ROOT) {
+                    return c.json({ success: false, error: "Cannot demote root user" }, 403);
+                }
+                sets.push("role = 1");
+                break;
+        }
+        sets.push("updated_at = datetime('now')");
+
+        const result = await c.env.DB.prepare(
+            `UPDATE users SET ${sets.join(", ")} WHERE id = ?`
+        ).bind(id).run();
+
+        const updated = await findUserById(c, id);
+        return c.json({
+            success: true,
+            data: {
+                changes: result.meta?.changes,
+                user: updated
+                    ? {
+                        id: updated.id,
+                        username: updated.username,
+                        role: updated.role,
+                        status: updated.status,
+                    }
+                    : null,
+            },
+        });
     },
 };
 

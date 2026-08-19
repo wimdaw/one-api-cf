@@ -19,8 +19,10 @@ import {
   getChannelModels,
   getChannelsForToken,
   getModelNamesForChannels,
+  inferEndpointForModel,
   parseChannelConfig,
   parseTokenConfig,
+  type TestEndpoint as InferredTestEndpoint,
 } from '@/lib/channel-models'
 import {
   Dialog,
@@ -40,7 +42,7 @@ type MediaEndpoint =
   | '/v1/images/edits'
   | '/v1/videos/generations'
   | '/v1/video/generations'
-type TestEndpoint = ChatEndpoint | MediaEndpoint
+type TestEndpoint = InferredTestEndpoint
 type MessageRole = 'user' | 'assistant'
 type MessageStatus = 'idle' | 'streaming' | 'success' | 'error'
 
@@ -73,7 +75,8 @@ const mediaEndpoints: MediaEndpoint[] = [
   '/v1/videos/generations',
   '/v1/video/generations',
 ]
-const allEndpoints: TestEndpoint[] = [...chatEndpoints, ...mediaEndpoints]
+const otherEndpoints: TestEndpoint[] = ['/v1/responses', '/v1/embeddings']
+const allEndpoints: TestEndpoint[] = [...chatEndpoints, ...mediaEndpoints, ...otherEndpoints]
 
 const isChatEndpoint = (endpoint: TestEndpoint): endpoint is ChatEndpoint => {
   return chatEndpoints.includes(endpoint as ChatEndpoint)
@@ -114,6 +117,8 @@ const paramDefinitions: ParamDefinition[] = [
 const endpointParamKeys: Record<TestEndpoint, PlaygroundParamKey[]> = {
   '/v1/chat/completions': [...playgroundParamKeys],
   '/v1/messages': ['temperature', 'top_p', 'stream', 'max_tokens'],
+  '/v1/responses': [...playgroundParamKeys],
+  '/v1/embeddings': ['max_tokens'],
   // 媒体端点: 仅展示通用参数 (stream 仅聊天有效)
   '/v1/images/generations': ['temperature', 'max_tokens'],
   '/v1/images/edits': ['temperature', 'max_tokens'],
@@ -222,6 +227,30 @@ const parseAssistantContent = (endpoint: TestEndpoint, result: unknown): string 
           return block.text
         }
         return ''
+      })
+      .filter(Boolean)
+      .join('')
+    return text || JSON.stringify(result, null, 2)
+  }
+
+  if (endpoint === '/v1/responses') {
+    // Responses API: output 数组中的 message 块
+    const output = Array.isArray(payload.output) ? payload.output : []
+    const text = output
+      .map((item) => {
+        if (typeof item !== 'object' || item === null) return ''
+        const record = item as Record<string, unknown>
+        if (record.type !== 'message') return ''
+        const content = Array.isArray(record.content) ? record.content : []
+        return content
+          .map((block) => {
+            if (typeof block === 'object' && block !== null && 'text' in block && typeof (block as Record<string, unknown>).text === 'string') {
+              return (block as Record<string, unknown>).text as string
+            }
+            return ''
+          })
+          .filter(Boolean)
+          .join('')
       })
       .filter(Boolean)
       .join('')
@@ -404,15 +433,25 @@ export function ApiTest() {
     setApiToken(nextToken)
     setModelValue('')
     setChannelKey('')
+    setEndpoint('/v1/chat/completions')
   }
 
   const handleModelChange = (nextModel: string) => {
     setModelValue(nextModel)
-    if (channelKey) {
-      const channel = tokenChannels.find((item) => item.key === channelKey)
+    let nextChannelKey = channelKey
+    if (nextChannelKey) {
+      const channel = tokenChannels.find((item) => item.key === nextChannelKey)
       if (channel && !channelSupportsModel(channel, nextModel)) {
-        setChannelKey('')
+        nextChannelKey = ''
       }
+    }
+    // 自动匹配端点: 优先用当前渠道推断, 否则按模型名推断
+    const channelForInference = nextChannelKey
+      ? tokenChannels.find((item) => item.key === nextChannelKey)
+      : undefined
+    const inferred = inferEndpointForModel(nextModel, channelForInference)
+    if (inferred && inferred !== endpoint) {
+      setEndpoint(inferred)
     }
   }
 
@@ -425,6 +464,11 @@ export function ApiTest() {
     const channel = tokenChannels.find((item) => item.key === nextChannelKey)
     if (channel && !channelSupportsModel(channel, modelValue)) {
       setModelValue('')
+    }
+    // 选择渠道后按渠道类型重新匹配端点
+    const inferred = inferEndpointForModel(modelValue, channel)
+    if (inferred && inferred !== endpoint) {
+      setEndpoint(inferred)
     }
   }
 
@@ -503,7 +547,10 @@ export function ApiTest() {
         ...advancedBody,
         model: modelValue,
       }
-      if (endpoint === '/v1/audio/speech') {
+      if (endpoint === '/v1/embeddings') {
+        // 向量嵌入: 用 input 字段
+        mediaBody.input = promptText
+      } else if (endpoint === '/v1/audio/speech') {
         mediaBody.input = promptText
       } else if (endpoint === '/v1/audio/transcriptions' || endpoint === '/v1/audio/translations') {
         // 文件上传类端点: body 走 multipart, 由 sendMediaRequest 处理
@@ -542,6 +589,13 @@ export function ApiTest() {
         const delta = payload.delta
         if (typeof delta === 'object' && delta !== null && 'text' in delta && typeof delta.text === 'string') {
           return delta.text
+        }
+        return ''
+      }
+      if (endpoint === '/v1/responses') {
+        // Responses API: SSE event 类型为 response.output_text.delta
+        if (payload.type === 'response.output_text.delta' && typeof payload.delta === 'string') {
+          return payload.delta
         }
         return ''
       }

@@ -152,6 +152,7 @@ type SystemConfig = BillingConfig & {
     apiDocs: ApiDocsConfig;
     invite: InviteConfig;
     website: WebsiteConfig;
+    mail?: MailConfig;
 }
 
 type InviteConfig = {
@@ -159,11 +160,35 @@ type InviteConfig = {
     quotaForInviter: number;
 }
 
+type MailConfig = {
+    provider: "resend" | "smtp";
+    apiKey: string;
+    fromEmail: string;
+    fromName: string;
+    smtpServer: string;
+    smtpPort: number;
+    smtpAccount: string;
+    smtpToken: string;
+}
+
+type OAuthConfig = {
+    githubClientId: string;
+    githubClientSecret: string;
+    oidcClientId: string;
+    oidcClientSecret: string;
+    oidcWellKnown: string;
+    oidcAuthorizationEndpoint: string;
+    oidcTokenEndpoint: string;
+    oidcUserinfoEndpoint: string;
+}
+
 type WebsiteConfig = {
     systemName: string;
     logo: string;
     footer: string;
     homeContent: string;
+    notice: string;
+    about: string;
     allowRegister: boolean; // 是否开放前台注册 (默认 true)
 }
 

@@ -6,6 +6,7 @@ import {
 } from "./billing";
 import { CONSTANTS } from "./constants";
 import { getJsonSetting, saveSetting } from "./utils";
+import { DEFAULT_MAIL_CONFIG, normalizeMailConfig } from "./mail";
 
 export const DEFAULT_ADMIN_SECURITY_CONFIG: AdminSecurityConfig = {
     enabled: false,
@@ -29,6 +30,8 @@ export const DEFAULT_WEBSITE_CONFIG: WebsiteConfig = {
     logo: "",
     footer: "",
     homeContent: "",
+    notice: "",
+    about: "",
     allowRegister: true,
 };
 
@@ -38,6 +41,7 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
     apiDocs: DEFAULT_API_DOCS_CONFIG,
     invite: DEFAULT_INVITE_CONFIG,
     website: DEFAULT_WEBSITE_CONFIG,
+    mail: DEFAULT_MAIL_CONFIG,
 };
 
 const normalizeBoolean = (value: unknown, fallback = false): boolean => {
@@ -123,6 +127,8 @@ const normalizeWebsiteConfig = (value: Partial<WebsiteConfig> | undefined): Webs
         logo: typeof v.logo === "string" ? v.logo.trim() : "",
         footer: typeof v.footer === "string" ? v.footer.trim() : "",
         homeContent: typeof v.homeContent === "string" ? v.homeContent.trim() : "",
+        notice: typeof v.notice === "string" ? v.notice.trim() : "",
+        about: typeof v.about === "string" ? v.about.trim() : "",
         allowRegister: typeof v.allowRegister === "boolean" ? v.allowRegister : true,
     };
 };
@@ -136,6 +142,7 @@ export const normalizeSystemConfig = (
         apiDocs: normalizeApiDocsConfig(value?.apiDocs),
         invite: normalizeInviteConfig(value?.invite),
         website: normalizeWebsiteConfig(value?.website),
+        mail: normalizeMailConfig(value?.mail),
     };
 };
 

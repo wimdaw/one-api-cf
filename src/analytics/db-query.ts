@@ -391,7 +391,7 @@ export const queryLocalUsageEvents = async (
 // ---- 日志检索 ----
 export const queryLocalUsageLogRecords = async (
     c: Context<HonoCustomType>,
-    params: UsageLogQueryParams
+    params: UsageLogQueryParams & { tokenHashes?: string[] }
 ) => {
     const range = "24h";
     const requestedPage = Math.min(Math.max(Number(params.page || 1) || 1, 1), 1000);
@@ -399,6 +399,7 @@ export const queryLocalUsageLogRecords = async (
         ? params.dimension : "token") as UsageLogFilterDimension;
     const keyword = params.keyword?.trim();
     const result = params.result === "success" || params.result === "failure" ? params.result : "all";
+    const tokenHashes = params.tokenHashes;
 
     const baseResponse = {
         sampled: true,
@@ -429,6 +430,13 @@ export const queryLocalUsageLogRecords = async (
         if (clauses.length === 0) {
             clauses.push("timestamp >= ?");
             bindParams.push(Math.floor(Date.now() / 1000) - 24 * 3600);
+        }
+
+        // 令牌过滤: 用户自助日志 (仅自己的令牌)
+        if (tokenHashes && tokenHashes.length > 0) {
+            const placeholders = tokenHashes.map(() => "?").join(",");
+            clauses.push(`token_hash IN (${placeholders})`);
+            bindParams.push(...tokenHashes);
         }
 
         if (keyword) {

@@ -146,6 +146,8 @@
     "channelNamePlaceholder": "例如：Azure GPT-4 東部",
     "channelType": "渠道類型",
     "channelTypeRequired": "渠道類型",
+    "builtinTypes": "內置類型",
+    "compatiblePresets": "OpenAI 兼容服務快捷模板",
     "channelWeight": "渠道權重",
     "channelWeightHint": "相同模型權重優先，相同權重隨機分配。",
     "channelStatus": "渠道狀態",

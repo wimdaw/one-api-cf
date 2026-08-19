@@ -1,5 +1,8 @@
 export type RouteId =
     | "chat-completions"
+    | "completions"
+    | "edits"
+    | "moderations"
     | "messages"
     | "responses"
     | "audio-speech"
@@ -7,6 +10,8 @@ export type RouteId =
     | "audio-translations"
     | "images-generations"
     | "images-edits"
+    | "images-variations"
+    | "engines-embeddings"
     | "video-generations"
     | "embeddings"
 
@@ -33,6 +38,12 @@ const VIDEO_TYPES: ChannelType[] = ["openai", "openai-video", "agnes-video"]
 
 const ROUTE_POLICIES: Record<RouteId, RoutePolicy> = {
     "chat-completions": { allowedTypes: CHAT_COMPLETIONS_CHANNEL_TYPES },
+    // 旧版补全 /v1/completions (OpenAI legacy, 部分自建服务仍用)
+    "completions":      { allowedTypes: OPENAI_TYPES },
+    // 旧版编辑 /v1/edits (OpenAI legacy)
+    "edits":            { allowedTypes: OPENAI_TYPES },
+    // 内容审核 /v1/moderations (仅 OpenAI 官方支持)
+    "moderations":      { allowedTypes: OPENAI_TYPES },
     "messages":         { allowedTypes: MESSAGES_CHANNEL_TYPES },
     "responses":        { allowedTypes: ["openai-responses", "azure-openai-responses"] },
     "audio-speech":     { allowedTypes: ["openai-audio", "azure-openai-audio", "azure-tts"] },
@@ -42,6 +53,10 @@ const ROUTE_POLICIES: Record<RouteId, RoutePolicy> = {
     // 生图
     "images-generations": { allowedTypes: OPENAI_TYPES },
     "images-edits":       { allowedTypes: OPENAI_TYPES, multipart: true },
+    // 图片变体 (OpenAI 官方端点, 文件上传)
+    "images-variations":  { allowedTypes: OPENAI_TYPES, multipart: true },
+    // 旧版引擎嵌入 /v1/engines/:model/embeddings
+    "engines-embeddings": { allowedTypes: OPENAI_TYPES },
     // 视频生成(OpenAI 新端点 / agnes 异步任务)
     "video-generations": { allowedTypes: VIDEO_TYPES },
     // 向量嵌入(纯 JSON)
@@ -50,6 +65,9 @@ const ROUTE_POLICIES: Record<RouteId, RoutePolicy> = {
 
 export const resolveRouteId = (pathname: string): RouteId | null => {
     if (pathname.endsWith("/chat/completions")) return "chat-completions"
+    if (pathname.endsWith("/completions")) return "completions"
+    if (pathname.endsWith("/edits")) return "edits"
+    if (pathname.endsWith("/moderations")) return "moderations"
     if (pathname.endsWith("/messages")) return "messages"
     if (pathname.endsWith("/responses")) return "responses"
     if (pathname.endsWith("/audio/speech")) return "audio-speech"
@@ -57,6 +75,8 @@ export const resolveRouteId = (pathname: string): RouteId | null => {
     if (pathname.endsWith("/audio/translations")) return "audio-translations"
     if (pathname.endsWith("/images/generations")) return "images-generations"
     if (pathname.endsWith("/images/edits")) return "images-edits"
+    if (pathname.endsWith("/images/variations")) return "images-variations"
+    if (/\/engines\/[^/]+\/embeddings$/.test(pathname)) return "engines-embeddings"
     if (pathname.endsWith("/videos/generations") || pathname.endsWith("/video/generations")) return "video-generations"
     if (pathname.endsWith("/embeddings")) return "embeddings"
     return null

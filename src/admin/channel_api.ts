@@ -150,6 +150,11 @@ export class ChannelGetEndpoint extends OpenAPIRoute {
     schema = {
         tags: ['Admin API'],
         summary: 'Get all channel configurations',
+        request: {
+            query: z.object({
+                keyword: z.string().optional(),
+            }),
+        },
         responses: {
             ...CommonSuccessfulResponse(z.array(z.object({
                 key: z.string(),
@@ -162,13 +167,21 @@ export class ChannelGetEndpoint extends OpenAPIRoute {
     };
 
     async handle(c: Context<HonoCustomType>) {
-        const result = await c.env.DB.prepare(
-            `SELECT * FROM channel_config
-             ORDER BY
-             COALESCE(CAST(json_extract(value, '$.weight') AS INTEGER), 0) DESC,
-             datetime(created_at) DESC,
-             key ASC`
-        ).all<ChannelConfigRow>();
+        const keyword = c.req.query("keyword")?.trim();
+        let sql = `SELECT * FROM channel_config`;
+        const params: unknown[] = [];
+        if (keyword) {
+            // value 是 JSON, LIKE 匹配 name/endpoint
+            sql += ` WHERE key LIKE ? OR value LIKE ?`;
+            const like = `%${keyword}%`;
+            params.push(like, like);
+        }
+        sql += `
+            ORDER BY
+            COALESCE(CAST(json_extract(value, '$.weight') AS INTEGER), 0) DESC,
+            datetime(created_at) DESC,
+            key ASC`;
+        const result = await c.env.DB.prepare(sql).bind(...params).all<ChannelConfigRow>();
 
         return {
             success: true,
@@ -449,3 +462,32 @@ export class ChannelDeleteEndpoint extends OpenAPIRoute {
         } as CommonResponse;
     }
 }
+
+// 批量删除所有 disabled 渠道 (移植自 one-api DeleteDisabledChannel)
+export const deleteDisabledChannels = async (c: Context<HonoCustomType>) => {
+    const rows = await c.env.DB.prepare(
+        `SELECT key, value FROM channel_config`
+    ).all<ChannelConfigRow>();
+
+    let deleted = 0;
+    const deletedKeys: string[] = [];
+    for (const row of rows.results || []) {
+        try {
+            const config = JSON.parse(row.value) as ChannelConfig;
+            if (config.enabled === false) {
+                await c.env.DB.prepare(
+                    `DELETE FROM channel_config WHERE key = ?`
+                ).bind(row.key).run();
+                deleted += 1;
+                deletedKeys.push(row.key);
+            }
+        } catch {
+            // skip unparseable rows
+        }
+    }
+
+    return c.json({
+        success: true,
+        data: { deleted, keys: deletedKeys },
+    });
+};

@@ -59,6 +59,38 @@ const channelTypes = [
   { value: "agnes-video", label: "Agnes Video (async task)" },
 ];
 
+// 常用 OpenAI-compatible 渠道快捷模板: 选类型时自动填入默认 endpoint
+// (这些渠道协议与 openai 一致, 仅 base_url 不同, 无需单独渠道类型)
+const channelPresetEndpoints: Record<string, string> = {
+  "openai": "https://api.openai.com/v1",
+  "openai-responses": "https://api.openai.com/v1",
+  "claude": "https://api.anthropic.com",
+  "gemini": "https://generativelanguage.googleapis.com",
+  "azure-openai": "https://YOUR_RESOURCE.openai.azure.com/openai/v1",
+  "openai-audio": "https://api.openai.com/v1",
+  "openai-video": "https://api.openai.com/v1",
+};
+
+// 常用第三方 OpenAI-compatible 服务 (选择后自动填 endpoint + models 占位)
+const compatiblePresets: Array<{ label: string; endpoint: string; models: string[] }> = [
+  { label: "OpenRouter", endpoint: "https://openrouter.ai/api/v1", models: ["openrouter/auto"] },
+  { label: "DeepSeek", endpoint: "https://api.deepseek.com/v1", models: ["deepseek-chat", "deepseek-reasoner"] },
+  { label: "Moonshot (Kimi)", endpoint: "https://api.moonshot.cn/v1", models: ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"] },
+  { label: "Groq", endpoint: "https://api.groq.com/openai/v1", models: ["llama-3.3-70b-versatile"] },
+  { label: "Mistral", endpoint: "https://api.mistral.ai/v1", models: ["mistral-large-latest", "mistral-small-latest"] },
+  { label: "SiliconFlow (硅基流动)", endpoint: "https://api.siliconflow.cn/v1", models: ["deepseek-ai/DeepSeek-V3"] },
+  { label: "X.AI (Grok)", endpoint: "https://api.x.ai/v1", models: ["grok-4"] },
+  { label: "Together AI", endpoint: "https://api.together.xyz/v1", models: ["meta-llama/Llama-3.3-70B-Instruct-Turbo"] },
+  { label: "Ollama (本机)", endpoint: "http://localhost:11434/v1", models: ["llama3"] },
+  { label: "Zhipu (智谱)", endpoint: "https://open.bigmodel.cn/api/paas/v4", models: ["glm-4-plus", "glm-4-flash"] },
+  { label: "Aliyun Bailian (阿里百炼)", endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1", models: ["qwen-max", "qwen-plus", "qwen-turbo"] },
+  { label: "Doubao (火山方舟)", endpoint: "https://ark.cn-beijing.volces.com/api/v3", models: ["doubao-pro-32k"] },
+  { label: "NVIDIA NIM", endpoint: "https://integrate.api.nvidia.com/v1", models: ["meta/llama-3.1-405b-instruct"] },
+  { label: "Novita AI", endpoint: "https://api.novita.ai/v3/openai", models: ["deepseek/deepseek-v3"] },
+  { label: "Cohere", endpoint: "https://api.cohere.com/v2", models: ["command-r-plus"] },
+  { label: "Cloudflare Workers AI", endpoint: "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1", models: ["@cf/meta/llama-3.1-8b-instruct"] },
+];
+
 const channelWeightOptions = Array.from({ length: 6 }, (_, weight) => ({
   value: weight,
   label: String(weight),
@@ -1487,13 +1519,43 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
                       </Label>
                       <Select
                         value={formData.type}
-                        onChange={(e) => setFormData({ ...formData, type: e.target.value as ChannelConfig["type"] })}
+                        onChange={(e) => {
+                          const nextType = e.target.value as ChannelConfig["type"]
+                          setFormData((prev) => {
+                            // 快捷模板: 自动填 endpoint + models 占位
+                            const preset = compatiblePresets.find((p) => p.label === nextType)
+                            if (preset) {
+                              return {
+                                ...prev,
+                                type: "openai" as const,
+                                endpoint: preset.endpoint,
+                                name: prev.name || preset.label,
+                                models: preset.models.map((m) => ({ id: m, name: m, enabled: true })),
+                              }
+                            }
+                            // 原生类型: 自动填默认 endpoint (仅当 endpoint 为空)
+                            const presetEndpoint = channelPresetEndpoints[nextType]
+                            if (presetEndpoint && !prev.endpoint) {
+                              return { ...prev, type: nextType, endpoint: presetEndpoint }
+                            }
+                            return { ...prev, type: nextType }
+                          })
+                        }}
                       >
-                        {channelTypes.map((type) => (
-                          <option key={type.value} value={type.value}>
-                            {type.label}
-                          </option>
-                        ))}
+                        <optgroup label={t("channels.builtinTypes")}>
+                          {channelTypes.map((type) => (
+                            <option key={type.value} value={type.value}>
+                              {type.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label={t("channels.compatiblePresets")}>
+                          {compatiblePresets.map((preset) => (
+                            <option key={preset.label} value={preset.label}>
+                              {preset.label}
+                            </option>
+                          ))}
+                        </optgroup>
                       </Select>
                     </div>
                     <div className="space-y-2">

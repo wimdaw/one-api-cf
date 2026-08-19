@@ -32,6 +32,66 @@ async function ensureUsersEmailColumn(c: Context<HonoCustomType>): Promise<void>
   }
 }
 
+// 给 users 表补第三方登录绑定列 (GitHub/微信/飞书/OIDC, 移植自 one-api)
+async function ensureUsersOauthColumns(c: Context<HonoCustomType>): Promise<void> {
+  const tableInfo = await c.env.DB.prepare(
+    `PRAGMA table_info(users)`
+  ).all<{ name: string }>();
+  const existing = new Set((tableInfo.results || []).map((col) => col.name));
+  const oauthColumns: Array<[string, string]> = [
+    ["github_id", "TEXT DEFAULT ''"],
+    ["wechat_id", "TEXT DEFAULT ''"],
+    ["lark_id", "TEXT DEFAULT ''"],
+    ["oidc_id", "TEXT DEFAULT ''"],
+  ];
+  for (const [col, ddl] of oauthColumns) {
+    if (!existing.has(col)) {
+      await c.env.DB.prepare(
+        `ALTER TABLE users ADD COLUMN ${col} ${ddl}`
+      ).run();
+    }
+  }
+}
+
+// 给 users 表补用户组列 (原版 one-api: group varchar(32) default 'default')
+async function ensureUsersGroupColumn(c: Context<HonoCustomType>): Promise<void> {
+  const tableInfo = await c.env.DB.prepare(
+    `PRAGMA table_info(users)`
+  ).all<{ name: string }>();
+  const hasGroup = (tableInfo.results || []).some((col) => col.name === "user_group");
+  if (!hasGroup) {
+    await c.env.DB.prepare(
+      `ALTER TABLE users ADD COLUMN user_group TEXT DEFAULT 'default'`
+    ).run();
+  }
+}
+
+// 给 users 表补请求计数列 (原版 one-api: request_count)
+async function ensureUsersRequestCountColumn(c: Context<HonoCustomType>): Promise<void> {
+  const tableInfo = await c.env.DB.prepare(
+    `PRAGMA table_info(users)`
+  ).all<{ name: string }>();
+  const hasRequestCount = (tableInfo.results || []).some((col) => col.name === "request_count");
+  if (!hasRequestCount) {
+    await c.env.DB.prepare(
+      `ALTER TABLE users ADD COLUMN request_count INTEGER DEFAULT 0`
+    ).run();
+  }
+}
+
+// 给 users 表补邮箱验证标记列
+async function ensureUsersEmailVerifiedColumn(c: Context<HonoCustomType>): Promise<void> {
+  const tableInfo = await c.env.DB.prepare(
+    `PRAGMA table_info(users)`
+  ).all<{ name: string }>();
+  const hasColumn = (tableInfo.results || []).some((col) => col.name === "email_verified");
+  if (!hasColumn) {
+    await c.env.DB.prepare(
+      `ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0`
+    ).run();
+  }
+}
+
 // 给已有的 admin_session 表补 user_id 列 (旧库无此列, CREATE TABLE IF NOT EXISTS 不会修改旧表)
 async function ensureAdminSessionUserIdColumn(c: Context<HonoCustomType>): Promise<void> {
   const tableInfo = await c.env.DB.prepare(
@@ -224,6 +284,60 @@ CREATE TABLE IF NOT EXISTS invite_code (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS ability (
+    user_group TEXT NOT NULL,
+    model TEXT NOT NULL,
+    channel_key TEXT NOT NULL,
+    enabled INTEGER DEFAULT 1,
+    priority INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_group, model, channel_key)
+);
+CREATE TABLE IF NOT EXISTS system_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER DEFAULT 0,
+    username TEXT DEFAULT '',
+    type TEXT DEFAULT '',
+    content TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS topup_record (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    username TEXT DEFAULT '',
+    amount REAL DEFAULT 0,
+    amount_raw REAL DEFAULT 0,
+    remark TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS email_verification (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
+    purpose TEXT DEFAULT 'verify',
+    expires_at TEXT NOT NULL,
+    attempts INTEGER DEFAULT 0,
+    max_attempts INTEGER DEFAULT 5,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_email_verification_email
+    ON email_verification (email, purpose);
+CREATE INDEX IF NOT EXISTS idx_email_verification_expires_at
+    ON email_verification (expires_at);
+CREATE INDEX IF NOT EXISTS idx_topup_record_user
+    ON topup_record (user_id);
+CREATE INDEX IF NOT EXISTS idx_topup_record_created_at
+    ON topup_record (created_at);
+CREATE INDEX IF NOT EXISTS idx_ability_group_model
+    ON ability (user_group, model);
+CREATE INDEX IF NOT EXISTS idx_system_log_user
+    ON system_log (user_id);
+CREATE INDEX IF NOT EXISTS idx_system_log_created_at
+    ON system_log (created_at);
 CREATE INDEX IF NOT EXISTS idx_admin_login_challenge_expires_at
     ON admin_login_challenge (expires_at);
 CREATE INDEX IF NOT EXISTS idx_admin_session_expires_at
@@ -492,6 +606,18 @@ const dbOperations = {
 
         // 列迁移: 给 users 表补 email 列 (邮箱注册/找回/验证)
         await ensureUsersEmailColumn(c);
+
+        // 列迁移: 给 users 表补第三方登录绑定列 (GitHub/微信/飞书/OIDC)
+        await ensureUsersOauthColumns(c);
+
+        // 列迁移: 给 users 表补用户组列 (默认 'default')
+        await ensureUsersGroupColumn(c);
+
+        // 列迁移: 给 users 表补请求计数列
+        await ensureUsersRequestCountColumn(c);
+
+        // 列迁移: 给 users 表补邮箱验证标记列
+        await ensureUsersEmailVerifiedColumn(c);
 
         // 美元计费迁移: 把 raw 内部值转为美元单位 (只跑一次, 幂等)
         await migrateBillingToDollars(c);

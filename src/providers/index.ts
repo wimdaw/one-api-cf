@@ -137,6 +137,9 @@ class UnifiedProxyEndpoint extends OpenAPIRoute {
 }
 
 api.post("/v1/chat/completions", UnifiedProxyEndpoint)
+api.post("/v1/completions", UnifiedProxyEndpoint)
+api.post("/v1/edits", UnifiedProxyEndpoint)
+api.post("/v1/moderations", UnifiedProxyEndpoint)
 api.post("/v1/messages", UnifiedProxyEndpoint)
 api.post("/v1/responses", UnifiedProxyEndpoint)
 api.post("/v1/audio/speech", UnifiedProxyEndpoint)
@@ -144,8 +147,69 @@ api.post("/v1/audio/transcriptions", UnifiedProxyEndpoint)
 api.post("/v1/audio/translations", UnifiedProxyEndpoint)
 api.post("/v1/images/generations", UnifiedProxyEndpoint)
 api.post("/v1/images/edits", UnifiedProxyEndpoint)
+api.post("/v1/images/variations", UnifiedProxyEndpoint)
+api.post("/v1/engines/:model/embeddings", UnifiedProxyEndpoint)
 api.post("/v1/videos/generations", UnifiedProxyEndpoint)
 api.post("/v1/video/generations", UnifiedProxyEndpoint)
 api.get("/v1/videos/status", VideoStatusEndpoint)
 api.post("/v1/embeddings", UnifiedProxyEndpoint)
 api.get("/v1/models", ModelsEndpoint)
+
+// ---------------------------------------------------------------------------
+// 未实现端点 (移植自 one-api: RelayNotImplemented, 返回标准 OpenAI 501 错误)
+// files / fine-tuning / assistants / threads 在原版同样未实现
+// ---------------------------------------------------------------------------
+const notImplemented = (c: Context<HonoCustomType>) => {
+    return c.json(
+        {
+            error: {
+                message: "API not implemented",
+                type: "one_api_error",
+                param: "",
+                code: "api_not_implemented",
+            },
+        },
+        501
+    )
+}
+
+// files
+api.get("/v1/files", notImplemented)
+api.post("/v1/files", notImplemented)
+api.delete("/v1/files/:id", notImplemented)
+api.get("/v1/files/:id", notImplemented)
+api.get("/v1/files/:id/content", notImplemented)
+// fine-tuning
+api.post("/v1/fine_tuning/jobs", notImplemented)
+api.get("/v1/fine_tuning/jobs", notImplemented)
+api.get("/v1/fine_tuning/jobs/:id", notImplemented)
+api.post("/v1/fine_tuning/jobs/:id/cancel", notImplemented)
+api.get("/v1/fine_tuning/jobs/:id/events", notImplemented)
+// assistants
+api.post("/v1/assistants", notImplemented)
+api.get("/v1/assistants/:id", notImplemented)
+api.post("/v1/assistants/:id", notImplemented)
+api.delete("/v1/assistants/:id", notImplemented)
+api.get("/v1/assistants", notImplemented)
+api.post("/v1/assistants/:id/files", notImplemented)
+api.get("/v1/assistants/:id/files/:fileId", notImplemented)
+api.delete("/v1/assistants/:id/files/:fileId", notImplemented)
+api.get("/v1/assistants/:id/files", notImplemented)
+// threads
+api.post("/v1/threads", notImplemented)
+api.get("/v1/threads/:id", notImplemented)
+api.post("/v1/threads/:id", notImplemented)
+api.delete("/v1/threads/:id", notImplemented)
+api.post("/v1/threads/:id/messages", notImplemented)
+api.get("/v1/threads/:id/messages/:messageId", notImplemented)
+api.post("/v1/threads/:id/messages/:messageId", notImplemented)
+api.get("/v1/threads/:id/messages/:messageId/files/:filesId", notImplemented)
+api.get("/v1/threads/:id/messages/:messageId/files", notImplemented)
+api.post("/v1/threads/:id/runs", notImplemented)
+api.get("/v1/threads/:id/runs/:runsId", notImplemented)
+api.post("/v1/threads/:id/runs/:runsId", notImplemented)
+api.get("/v1/threads/:id/runs", notImplemented)
+api.post("/v1/threads/:id/runs/:runsId/submit_tool_outputs", notImplemented)
+api.post("/v1/threads/:id/runs/:runsId/cancel", notImplemented)
+api.get("/v1/threads/:id/runs/:runsId/steps/:stepId", notImplemented)
+api.get("/v1/threads/:id/runs/:runsId/steps", notImplemented)
