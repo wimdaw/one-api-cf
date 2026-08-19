@@ -740,6 +740,21 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
     },
   });
 
+  // 批量删除所有 disabled 渠道 (移植自 one-api DeleteDisabledChannel)
+  const deleteDisabledMutation = useMutation({
+    mutationFn: async () => {
+      return apiClient.deleteDisabledChannels();
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["channels"] });
+      const count = (res.data as { deleted?: number } | undefined)?.deleted;
+      addToast(t("channels.deleteDisabledSuccess", { count: count ?? "?" }), "success");
+    },
+    onError: (error: Error) => {
+      addToast(t("channels.deleteDisabledFailed", { message: error.message }), "error");
+    },
+  });
+
   const toggleEnabledMutation = useMutation({
     mutationFn: async ({ channel, enabled }: { channel: Channel; enabled: boolean }) => {
       const config = normalizeChannelFormConfig(parseChannelValue(channel));
@@ -1233,6 +1248,18 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
         description={t("channels.description")}
         actions={
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (window.confirm(t("channels.deleteDisabledConfirm"))) deleteDisabledMutation.mutate();
+              }}
+              disabled={deleteDisabledMutation.isPending}
+              className="text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">{t("channels.deleteDisabled")}</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
             </Button>

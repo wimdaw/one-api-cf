@@ -497,6 +497,66 @@ export const apiClient = {
       body: JSON.stringify({ to }),
     }),
 
+  // ---- 日志系统 (移植自 one-api) ----
+  // 日志统计
+  getLogStat: () =>
+    request<ApiResponse<{ total: number; successes: number; failures: number; tokens?: number; cost?: number }>>(
+      '/api/admin/log/stat',
+      { method: 'GET' },
+    ),
+  // 日志搜索 (管理员, 跨全部 token)
+  searchAdminLogs: (params: { keyword?: string; page?: number; pageSize?: number; result?: string }) =>
+    request<ApiResponse<UsageLogSearchData>>(
+      `/api/admin/log/search${buildQueryString({
+        keyword: params.keyword,
+        page: params.page,
+        pageSize: params.pageSize,
+        result: params.result,
+      })}`,
+      { method: 'GET' },
+    ),
+  // 清理日志
+  cleanupLogs: (days: number) =>
+    request<ApiResponse<{ deleted: number }>>(`/api/admin/log?days=${days}`, { method: 'DELETE' }),
+
+  // ---- 用户管理操作 (移植自 one-api) ----
+  manageUser: (data: { user_id: number; action: 'disable' | 'enable' | 'promote' | 'demote' }) =>
+    request<ApiResponse<unknown>>('/api/admin/user/manage', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  // 管理员直接充值
+  adminTopUp: (data: { user_id: number; quota: number; remark?: string }) =>
+    request<ApiResponse<unknown>>('/api/admin/topup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  // 充值记录
+  getTopUpRecords: (params: { page?: number; pageSize?: number } = {}) =>
+    request<ApiResponse<{ records: unknown[]; total: number }>>(
+      `/api/admin/topup/records${buildQueryString(params)}`,
+      { method: 'GET' },
+    ),
+
+  // ---- 用户组 (移植自 one-api) ----
+  listGroups: () => request<ApiResponse<string[]>>('/api/admin/group', { method: 'GET' }),
+  setUserGroup: (data: { user_id: number; group: string }) =>
+    request<ApiResponse<unknown>>('/api/admin/group/user', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  setChannelGroup: (data: { key: string; groups: string[] }) =>
+    request<ApiResponse<unknown>>(`/api/admin/group/channel/${data.key}`, {
+      method: 'POST',
+      body: JSON.stringify({ groups: data.groups }),
+    }),
+  getChannelGroups: (key: string) =>
+    request<ApiResponse<string[]>>(`/api/admin/group/channel/${key}`, { method: 'GET' }),
+
+  // 批量删除 disabled 渠道
+  deleteDisabledChannels: () =>
+    request<ApiResponse<unknown>>('/api/admin/channel/disabled', { method: 'DELETE' }),
+
   bindMyEmail: (data: { email: string; code: string }) =>
     request<ApiResponse<{ bound: boolean; email: string }>>('/api/user/email/bind', {
       method: 'POST',

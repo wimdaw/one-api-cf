@@ -1,5 +1,5 @@
 import { startTransition, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
 import {
   AnalyticsEventItem,
@@ -17,9 +17,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useBillingConfig } from "@/hooks/use-billing-config";
+import { useToast } from "@/components/ui/use-toast";
 import { readScopedCache, writeScopedCache } from "@/lib/local-cache";
 import { cn, formatCompactNumber, formatCurrency, parseUtcTimestamp } from "@/lib/utils";
-import { Eye, RefreshCw, Search } from "lucide-react";
+import { Eye, RefreshCw, Search, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getLocaleString } from "@/i18n";
 
@@ -206,6 +207,7 @@ const DetailRow = ({
 
 export function UsageLogs() {
   const { t } = useTranslation();
+  const { addToast } = useToast();
   const { data: billingConfig } = useBillingConfig();
   const displayDecimals = billingConfig?.displayDecimals ?? 6;
   const defaultFilters = useMemo(() => createFilterPreset("24h"), []);
@@ -279,6 +281,28 @@ export function UsageLogs() {
     initialDataUpdatedAt: initialLogsData ? cachedLogsSnapshot?.updatedAt : undefined,
   });
 
+  // 日志统计卡 (移植自 one-api LogStat)
+  const statQuery = useQuery({
+    queryKey: ["log-stat"],
+    queryFn: async () => {
+      const res = await apiClient.getLogStat();
+      return res.data;
+    },
+  });
+
+  // 日志清理 (移植自 one-api CleanLogs)
+  const cleanupMutation = useMutation({
+    mutationFn: (days: number) => apiClient.cleanupLogs(days),
+    onSuccess: (res) => {
+      addToast(t("usageLogs.cleanupSuccess", { count: res.data?.deleted ?? 0 }), "success");
+      statQuery.refetch();
+      logsQuery.refetch();
+    },
+    onError: (err) => {
+      addToast(err instanceof Error ? err.message : t("usageLogs.cleanupFailed"), "error");
+    },
+  });
+
   const activePage = logsQuery.data?.page ?? currentPage;
   const totalPages = logsQuery.data?.totalPages ?? 0;
   const totalItems = logsQuery.data?.total ?? 0;
@@ -322,6 +346,17 @@ export function UsageLogs() {
       description={t('usageLogs.description')}
       actions={
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (window.confirm(t("usageLogs.cleanupConfirm"))) cleanupMutation.mutate(7);
+            }}
+            disabled={cleanupMutation.isPending}
+          >
+            <Trash2 className="h-4 w-4" />
+            {cleanupMutation.isPending ? t("usageLogs.cleaning") : t("usageLogs.cleanup")}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => logsQuery.refetch()} disabled={logsQuery.isFetching}>
             <RefreshCw className={cn("h-4 w-4", logsQuery.isFetching && "animate-spin")} />
           </Button>
@@ -329,6 +364,38 @@ export function UsageLogs() {
       }
     >
       <div className="space-y-6">
+        {/* 日志统计卡 (移植自 one-api) */}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className="border-0">
+            <CardContent className="p-5">
+              <div className="text-sm text-muted-foreground">{t('usageLogs.statTotal')}</div>
+              <div className="mt-1 text-2xl font-semibold">{statQuery.data?.total ?? "-"}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-0">
+            <CardContent className="p-5">
+              <div className="text-sm text-muted-foreground">{t('usageLogs.statSuccess')}</div>
+              <div className="mt-1 text-2xl font-semibold text-green-600">{statQuery.data?.successes ?? "-"}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-0">
+            <CardContent className="p-5">
+              <div className="text-sm text-muted-foreground">{t('usageLogs.statFailures')}</div>
+              <div className="mt-1 text-2xl font-semibold text-red-600">{statQuery.data?.failures ?? "-"}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-0">
+            <CardContent className="p-5">
+              <div className="text-sm text-muted-foreground">{t('usageLogs.statCost')}</div>
+              <div className="mt-1 text-2xl font-semibold">
+                {statQuery.data?.cost !== undefined
+                  ? `$${Number(statQuery.data.cost).toFixed(displayDecimals)}`
+                  : "-"}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardContent className="pt-6 space-y-4">
             {logsQuery.data?.compatibilityWarning && (

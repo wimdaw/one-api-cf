@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Copy, Trash2, Ticket, CopyPlus, Gift } from "lucide-react";
+import { Plus, Copy, Trash2, Ticket, CopyPlus, Gift, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { copyToClipboard } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -129,10 +129,17 @@ export function Redemptions() {
   const [quota, setQuota] = useState("100");
   const [count, setCount] = useState("1");
   const [showCreate, setShowCreate] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["redemptions"],
     queryFn: async () => (await apiClient.listRedemptions()).data?.redemptions ?? [],
+  });
+
+  const filtered = (data ?? []).filter((r) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (r.code || "").toLowerCase().includes(q);
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["redemptions"] });
@@ -195,9 +202,18 @@ export function Redemptions() {
 
       <Card className="border-0">
         <CardContent className="p-4">
+          <div className="relative mb-4">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9"
+              placeholder={t("redemptions.searchPlaceholder")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
           {isLoading ? (
             <div className="text-center text-muted-foreground py-10">{t("common.loading")}</div>
-          ) : !data?.length ? (
+          ) : !filtered.length ? (
             <div className="text-center text-muted-foreground py-10">{t("redemptions.empty")}</div>
           ) : (
             <div className="overflow-x-auto">
@@ -212,7 +228,7 @@ export function Redemptions() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(data || []).map((r) => (
+                  {filtered.map((r) => (
                     <tr key={r.id} className="border-b hover:bg-muted/50">
                       <td className="py-2 pr-4">
                         <span className="font-mono font-medium">{r.code}</span>

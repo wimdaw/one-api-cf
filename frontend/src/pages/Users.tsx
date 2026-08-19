@@ -11,7 +11,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search, KeyRound, UserCog } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, KeyRound, UserCog, Ban, CheckCircle2, Coins, Users2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const ROLE_USER = 1;
@@ -28,6 +28,11 @@ export function Users() {
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [form, setForm] = useState({ username: "", password: "", email: "", quota: "0" });
+  const [topUpTarget, setTopUpTarget] = useState<AdminUser | null>(null);
+  const [topUpAmount, setTopUpAmount] = useState("10");
+  const [topUpRemark, setTopUpRemark] = useState("");
+  const [groupTarget, setGroupTarget] = useState<AdminUser | null>(null);
+  const [groupValue, setGroupValue] = useState("default");
 
   const { data, isLoading } = useQuery({
     queryKey: ["users"],
@@ -72,6 +77,50 @@ export function Users() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiClient.deleteUser(id),
     onSuccess: () => { invalidate(); addToast(t("users.deleted"), "success"); },
+  });
+
+  const { data: groups } = useQuery({
+    queryKey: ["groups"],
+    queryFn: async () => {
+      const res = await apiClient.listGroups();
+      return res.data ?? ["default"];
+    },
+  });
+
+  const manageMutation = useMutation({
+    mutationFn: ({ id, action }: { id: number; action: "disable" | "enable" | "promote" | "demote" }) =>
+      apiClient.manageUser({ user_id: id, action }),
+    onSuccess: () => { invalidate(); addToast(t("users.updated"), "success"); },
+  });
+
+  const topUpMutation = useMutation({
+    mutationFn: () => {
+      if (!topUpTarget) throw new Error("no target");
+      return apiClient.adminTopUp({
+        user_id: topUpTarget.id,
+        quota: Number(topUpAmount) || 0,
+        remark: topUpRemark || undefined,
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      setTopUpTarget(null);
+      setTopUpAmount("10");
+      setTopUpRemark("");
+      addToast(t("users.topUpSuccess"), "success");
+    },
+  });
+
+  const setGroupMutation = useMutation({
+    mutationFn: () => {
+      if (!groupTarget) throw new Error("no target");
+      return apiClient.setUserGroup({ user_id: groupTarget.id, group: groupValue });
+    },
+    onSuccess: () => {
+      invalidate();
+      setGroupTarget(null);
+      addToast(t("users.groupUpdated"), "success");
+    },
   });
 
   const resetForm = () => setForm({ username: "", password: "", email: "", quota: "0" });
@@ -134,6 +183,7 @@ export function Users() {
                     <th className="text-left py-2 pr-4 font-medium">{t("users.email")}</th>
                     <th className="text-left py-2 pr-4 font-medium">{t("users.role")}</th>
                     <th className="text-left py-2 pr-4 font-medium">{t("users.status")}</th>
+                    <th className="text-left py-2 pr-4 font-medium">{t("users.group")}</th>
                     <th className="text-right py-2 pr-4 font-medium">{t("users.balance")}</th>
                     <th className="text-right py-2 font-medium">{t("users.actions")}</th>
                   </tr>
@@ -159,8 +209,34 @@ export function Users() {
                       <td className="py-2 pr-4">
                         <Badge variant={u.status === STATUS_ENABLED ? "success" : "destructive"}>{statusLabel(u.status)}</Badge>
                       </td>
+                      <td className="py-2 pr-4 text-muted-foreground">
+                        {(u as unknown as { user_group?: string }).user_group || "default"}
+                      </td>
                       <td className="py-2 pr-4 text-right">{u.balance < 0 ? t("common.unlimited") : `$${Number(u.balance.toFixed(2))}`}</td>
                       <td className="py-2 text-right whitespace-nowrap">
+                        {u.status === STATUS_ENABLED ? (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                            onClick={() => manageMutation.mutate({ id: u.id, action: "disable" })}
+                            title={t("users.disable")}>
+                            <Ban className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600"
+                            onClick={() => manageMutation.mutate({ id: u.id, action: "enable" })}
+                            title={t("users.enable")}>
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => { setTopUpTarget(u); setTopUpAmount("10"); setTopUpRemark(""); }}
+                          title={t("users.topUp")}>
+                          <Coins className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7"
+                          onClick={() => { setGroupTarget(u); setGroupValue((u as unknown as { user_group?: string }).user_group || "default"); }}
+                          title={t("users.setGroup")}>
+                          <Users2 className="h-3.5 w-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7"
                           onClick={() => { setEditing(u); setForm({ username: u.username, password: "", email: u.email || "", quota: String(u.quota) }); }}
                           title={t("users.edit")}>
@@ -245,6 +321,71 @@ export function Users() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>{t("common.cancel")}</Button>
             <Button onClick={() => editing && updateMutation.mutate(editing.id)} disabled={updateMutation.isPending}>
+              {t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Top Up Dialog */}
+      <Dialog open={topUpTarget !== null} onOpenChange={(o) => !o && setTopUpTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("users.topUpTitle", { username: topUpTarget?.username ?? "" })}</DialogTitle>
+            <DialogDescription>{t("users.topUpDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t("users.topUpAmount")}</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={topUpAmount}
+                onChange={(e) => setTopUpAmount(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t("users.topUpAmountHint")}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("users.topUpRemark")}</Label>
+              <Input value={topUpRemark} onChange={(e) => setTopUpRemark(e.target.value)} placeholder={t("users.topUpRemarkPlaceholder")} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTopUpTarget(null)}>{t("common.cancel")}</Button>
+            <Button onClick={() => topUpMutation.mutate()} disabled={!topUpAmount || Number(topUpAmount) <= 0 || topUpMutation.isPending}>
+              {t("users.topUpConfirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Group Dialog */}
+      <Dialog open={groupTarget !== null} onOpenChange={(o) => !o && setGroupTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("users.setGroupTitle", { username: groupTarget?.username ?? "" })}</DialogTitle>
+            <DialogDescription>{t("users.setGroupDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>{t("users.group")}</Label>
+            <div className="flex flex-wrap gap-2">
+              {(groups ?? ["default"]).map((g) => (
+                <Button
+                  key={g}
+                  type="button"
+                  variant={groupValue === g ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setGroupValue(g)}
+                >
+                  {g}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGroupTarget(null)}>{t("common.cancel")}</Button>
+            <Button onClick={() => setGroupMutation.mutate()} disabled={setGroupMutation.isPending}>
               {t("common.save")}
             </Button>
           </DialogFooter>
