@@ -461,6 +461,48 @@ export const apiClient = {
       skipUnauthorizedHandler: true,
     }),
 
+  // 邮箱验证码 (移植自 one-api: 邮箱验证/密码重置)
+  sendVerificationCode: (email: string) =>
+    request<ApiResponse<{ sent: boolean; expires_in: number }>>(`/api/verification?email=${encodeURIComponent(email)}`, {
+      method: 'GET',
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+
+  sendResetPasswordCode: (email: string) =>
+    request<ApiResponse<{ sent: boolean; expires_in: number }>>(`/api/reset_password?email=${encodeURIComponent(email)}`, {
+      method: 'GET',
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+
+  resetPasswordWithCode: (data: { email: string; code: string; password: string }) =>
+    request<ApiResponse<{ reset: boolean }>>('/api/user/reset', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, {
+      skipUnauthorizedHandler: true,
+    }),
+
+  verifyMyEmail: (code: string) =>
+    request<ApiResponse<{ verified: boolean }>>('/api/user/email/verify', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+
+  // 测试邮件发送 (管理员)
+  testMail: (to: string) =>
+    request<ApiResponse<{ sent: boolean; to: string }>>('/api/admin/system/mail/test', {
+      method: 'POST',
+      body: JSON.stringify({ to }),
+    }),
+
+  bindMyEmail: (data: { email: string; code: string }) =>
+    request<ApiResponse<{ bound: boolean; email: string }>>('/api/user/email/bind', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   getUserProfile: () =>
     request<ApiResponse<UserSelfInfo & { aff_code?: string; inviter_id?: number | null }>>('/api/user/profile', {
       method: 'GET',

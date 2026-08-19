@@ -67,6 +67,8 @@ async function myProfile(c: Context<HonoCustomType>) {
             quota: user.quota === -1 ? -1 : rawToDollars(user.quota),
             used_quota: user.quota === -1 ? rawToDollars(user.used_quota) : rawToDollars(user.used_quota),
             balance: user.quota === -1 ? -1 : Math.max(0, rawToDollars(user.quota - user.used_quota)),
+            email: user.email || "",
+            email_verified: user.email_verified || 0,
             aff_code: user.aff_code || "",
             inviter_id: user.inviter_id,
         },

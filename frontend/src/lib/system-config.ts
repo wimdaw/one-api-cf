@@ -1,4 +1,4 @@
-import { type AdminSecurityConfig, type ApiDocsConfig, type InviteConfig, type SystemConfig, type WebsiteConfig } from "@/types";
+import { type AdminSecurityConfig, type ApiDocsConfig, type InviteConfig, type MailConfig, type SystemConfig, type WebsiteConfig } from "@/types";
 import {
   DEFAULT_BILLING_DISPLAY_DECIMALS,
   normalizeBillingDisplayDecimals,
@@ -29,12 +29,26 @@ export const DEFAULT_WEBSITE_CONFIG: WebsiteConfig = {
   allowRegister: true,
 };
 
+export const DEFAULT_MAIL_CONFIG = {
+  provider: 'resend' as const,
+  apiKey: '',
+  fromEmail: '',
+  fromName: '',
+  smtpServer: '',
+  smtpPort: 587,
+  smtpAccount: '',
+  smtpToken: '',
+  smtpSender: '',
+  smtpEncrypted: false,
+};
+
 export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   displayDecimals: DEFAULT_BILLING_DISPLAY_DECIMALS,
   adminSecurity: DEFAULT_ADMIN_SECURITY_CONFIG,
   apiDocs: DEFAULT_API_DOCS_CONFIG,
   invite: DEFAULT_INVITE_CONFIG,
   website: DEFAULT_WEBSITE_CONFIG,
+  mail: DEFAULT_MAIL_CONFIG,
 };
 
 export const PRECISION_OPTIONS = [
@@ -76,6 +90,22 @@ export const normalizeInviteConfig = (value?: Partial<InviteConfig> | null): Inv
   };
 };
 
+export const normalizeMailConfig = (value?: Partial<MailConfig> | null): MailConfig => {
+  const v = value ?? {};
+  return {
+    provider: (v.provider === 'smtp' ? 'smtp' : 'resend') as 'resend' | 'smtp',
+    apiKey: normalizeString(v.apiKey),
+    fromEmail: normalizeString(v.fromEmail),
+    fromName: normalizeString(v.fromName),
+    smtpServer: normalizeString(v.smtpServer),
+    smtpPort: typeof v.smtpPort === 'number' ? v.smtpPort : 587,
+    smtpAccount: normalizeString(v.smtpAccount),
+    smtpToken: normalizeString(v.smtpToken),
+    smtpSender: normalizeString(v.smtpSender),
+    smtpEncrypted: v.smtpEncrypted === true,
+  };
+};
+
 export const normalizeWebsiteConfig = (value?: Partial<WebsiteConfig> | null): WebsiteConfig => {
   const v = value ?? {};
   return {
@@ -94,6 +124,7 @@ export const normalizeSystemConfig = (value?: Partial<SystemConfig> | null): Sys
     apiDocs: normalizeApiDocsConfig(value?.apiDocs),
     invite: normalizeInviteConfig(value?.invite),
     website: normalizeWebsiteConfig(value?.website),
+    mail: normalizeMailConfig(value?.mail),
   };
 };
 

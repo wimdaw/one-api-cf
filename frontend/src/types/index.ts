@@ -66,6 +66,7 @@ export interface SystemConfig extends BillingConfig {
   apiDocs: ApiDocsConfig
   invite: InviteConfig
   website: WebsiteConfig
+  mail: MailConfig
 }
 
 export interface InviteConfig {
@@ -81,6 +82,19 @@ export interface WebsiteConfig {
   allowRegister: boolean
 }
 
+export interface MailConfig {
+  provider: 'resend' | 'smtp'
+  apiKey: string
+  fromEmail: string
+  fromName: string
+  smtpServer: string
+  smtpPort: number
+  smtpAccount: string
+  smtpToken: string
+  smtpSender: string
+  smtpEncrypted: boolean
+}
+
 export interface AdminLoginResponse {
   requiresVerification: boolean
   challengeId: string | null
@@ -93,6 +107,8 @@ export interface UserSelfInfo {
   id: number
   username: string
   display_name: string
+  email?: string
+  email_verified?: number
   role: number
   status: number
   quota: number

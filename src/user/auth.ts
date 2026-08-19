@@ -21,6 +21,7 @@ export type UserRow = {
     password_hash: string;
     display_name: string;
     email?: string;
+    email_verified?: number;
     role: number;
     status: number;
     quota: number;

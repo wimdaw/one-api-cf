@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { copyToClipboard, formatCurrency } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
-import { Plus, Copy, Trash2, KeyRound, Wallet, User as UserIcon, Gift, BarChart3 } from "lucide-react";
+import { Plus, Copy, Trash2, KeyRound, Wallet, User as UserIcon, Gift, BarChart3, Mail, BadgeCheck, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface MyUsage { quota: number; used_quota: number; balance: number; total_usage: number; }
@@ -64,6 +64,61 @@ export function MyAccount() {
       queryClient.invalidateQueries({ queryKey: ["my-usage"] });
       addToast(`${t("account.redeemed")}: +${res?.data?.added_quota ?? 0}`, "success");
     },
+  });
+
+  // ---- 邮箱绑定/验证 (移植自 one-api: 邮箱验证码) ----
+  const [emailValue, setEmailValue] = useState(currentUser?.email || "");
+  const [emailCode, setEmailCode] = useState("");
+  const [emailStep, setEmailStep] = useState<"idle" | "sent" | "done">("idle");
+  const [emailError, setEmailError] = useState("");
+  const [codeCooldown, setCodeCooldown] = useState(0);
+
+  const { data: profileData } = useQuery({
+    queryKey: ["my-profile"],
+    queryFn: async () => (await apiClient.getUserProfile()).data,
+  });
+
+  const boundEmail = profileData?.email || currentUser?.email || "";
+  const emailVerified = profileData?.email_verified === 1 || currentUser?.email_verified === 1;
+
+  const sendCodeMutation = useMutation({
+    mutationFn: (email: string) => apiClient.sendVerificationCode(email),
+    onSuccess: () => {
+      setEmailStep("sent");
+      setEmailError("");
+      addToast(t("account.codeSent"), "success");
+      // 60 秒冷却
+      setCodeCooldown(60);
+      const timer = setInterval(() => {
+        setCodeCooldown((prev) => {
+          if (prev <= 1) { clearInterval(timer); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+    },
+    onError: (error) => setEmailError(error instanceof Error ? error.message : t("account.codeSendFailed")),
+  });
+
+  const bindEmailMutation = useMutation({
+    mutationFn: () => apiClient.bindMyEmail({ email: emailValue.trim(), code: emailCode.trim() }),
+    onSuccess: () => {
+      setEmailStep("done");
+      setEmailCode("");
+      addToast(t("account.emailBound"), "success");
+      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+    },
+    onError: (error) => setEmailError(error instanceof Error ? error.message : t("account.emailBindFailed")),
+  });
+
+  const verifyEmailMutation = useMutation({
+    mutationFn: () => apiClient.verifyMyEmail(emailCode.trim()),
+    onSuccess: () => {
+      setEmailStep("done");
+      setEmailCode("");
+      addToast(t("account.emailVerified"), "success");
+      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+    },
+    onError: (error) => setEmailError(error instanceof Error ? error.message : t("account.emailVerifyFailed")),
   });
 
   const balance = usage?.balance ?? 0;
@@ -199,6 +254,76 @@ export function MyAccount() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 邮箱绑定/验证 */}
+      <Card className="border-0">
+        <CardContent className="p-5 space-y-4">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Mail className="h-4 w-4" />{t("account.emailSettings")}
+            {boundEmail && emailVerified && (
+              <BadgeCheck className="h-4 w-4 text-emerald-500" />
+            )}
+          </h2>
+
+          {boundEmail ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-lg bg-muted/40 p-3">
+                <span className="text-sm font-medium truncate">{boundEmail}</span>
+                {emailVerified ? (
+                  <span className="text-xs text-emerald-600 shrink-0 flex items-center gap-1"><BadgeCheck className="h-3.5 w-3.5" />{t("account.emailVerifiedBadge")}</span>
+                ) : (
+                  <span className="text-xs text-amber-600 shrink-0">{t("account.emailUnverified")}</span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">{t("account.emailHint")}</div>
+              {!emailVerified && (<>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">{t("account.verificationCode")}</Label>
+                  <div className="flex gap-2">
+                    <Input className="font-mono" placeholder="------" value={emailCode} onChange={(e) => setEmailCode(e.target.value)} />
+                    <Button variant="outline" onClick={() => sendCodeMutation.mutate(boundEmail)} disabled={codeCooldown > 0}>
+                      {codeCooldown > 0 ? `${codeCooldown}s` : t("account.resendCode")}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button size="sm" onClick={() => verifyEmailMutation.mutate()} disabled={!emailCode || verifyEmailMutation.isPending}>
+                    <BadgeCheck className="h-3.5 w-3.5 mr-1" />{t("account.verifyEmail")}
+                  </Button>
+                </div>
+              </>)}
+              {emailError && <p className="text-sm text-destructive">{emailError}</p>}
+            </div>
+          ) : emailStep === "done" ? (
+            <p className="text-sm text-emerald-600 flex items-center gap-2"><BadgeCheck className="h-4 w-4" />{t("account.emailBoundSuccess")}</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">{t("account.bindEmail")}</Label>
+                <Input type="email" placeholder="user@example.com" value={emailValue} onChange={(e) => setEmailValue(e.target.value)} />
+              </div>
+              <Button variant="outline" size="sm" onClick={() => sendCodeMutation.mutate(emailValue.trim())} disabled={!emailValue || codeCooldown > 0 || sendCodeMutation.isPending}>
+                <Send className="h-3.5 w-3.5 mr-1" />
+                {codeCooldown > 0 ? `${t("account.resendIn")} ${codeCooldown}s` : t("account.sendCode")}
+              </Button>
+              {emailStep === "sent" && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">{t("account.verificationCode")}</Label>
+                    <Input className="font-mono" placeholder="------" value={emailCode} onChange={(e) => setEmailCode(e.target.value)} />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button size="sm" onClick={() => bindEmailMutation.mutate()} disabled={!emailCode || bindEmailMutation.isPending}>
+                      <BadgeCheck className="h-3.5 w-3.5 mr-1" />{t("account.bindNow")}
+                    </Button>
+                  </div>
+                </>
+              )}
+              {emailError && <p className="text-sm text-destructive">{emailError}</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

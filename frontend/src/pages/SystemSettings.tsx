@@ -59,6 +59,13 @@ export function SystemSettings() {
   const [systemConfig, setSystemConfig] = useState(DEFAULT_SYSTEM_CONFIG);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [testEmail, setTestEmail] = useState("");
+
+  const mailTestMutation = useMutation({
+    mutationFn: (to: string) => apiClient.testMail(to),
+    onSuccess: () => addToast(t("settings.mailTestSuccess"), "success"),
+    onError: (error) => addToast(error instanceof Error ? error.message : t("settings.mailTestFailed"), "error"),
+  });
 
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -537,6 +544,160 @@ export function SystemSettings() {
                   website: { ...current.website, allowRegister: checked },
                 }))}
               />
+            </div>
+          </div>
+        </section>
+
+        {/* 邮件设置 (Resend / SMTP) */}
+        <section className="space-y-4">
+          <div>
+            <h3 className="font-bold tracking-tight">{t('settings.mail')}</h3>
+            <p className="text-sm text-muted-foreground">{t('settings.mailDesc')}</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t('settings.mailProvider')}</Label>
+            <ButtonGroup
+              value={normalizedSystemConfig.mail?.provider ?? 'resend'}
+              options={[
+                { value: 'resend', label: 'Resend (推荐)' },
+                { value: 'smtp', label: 'SMTP (自部署)' },
+              ]}
+              onValueChange={(value) => setSystemConfig((current) => ({
+                ...current,
+                mail: { ...(current.mail as Record<string, unknown>), provider: value as 'resend' | 'smtp' },
+              }))}
+              className="flex h-10 items-center px-2 gap-1"
+            />
+            <p className="text-xs text-muted-foreground">{t('settings.mailProviderHint')}</p>
+          </div>
+
+          {normalizedSystemConfig.mail?.provider === 'resend' ? (
+            <>
+              <div className="space-y-2">
+                <Label>{t('settings.mailApiKey')}</Label>
+                <Input
+                  type="password"
+                  placeholder="re_..."
+                  value={normalizedSystemConfig.mail?.apiKey ?? ''}
+                  onChange={(e) => setSystemConfig((current) => ({
+                    ...current,
+                    mail: { ...(current.mail as Record<string, unknown>), apiKey: e.target.value },
+                  }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('settings.mailFromEmail')}</Label>
+                <Input
+                  type="email"
+                  placeholder="no-reply@yourdomain.com"
+                  value={normalizedSystemConfig.mail?.fromEmail ?? ''}
+                  onChange={(e) => setSystemConfig((current) => ({
+                    ...current,
+                    mail: { ...(current.mail as Record<string, unknown>), fromEmail: e.target.value },
+                  }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('settings.mailFromName')}</Label>
+                <Input
+                  placeholder="AI Gateway"
+                  value={normalizedSystemConfig.mail?.fromName ?? ''}
+                  onChange={(e) => setSystemConfig((current) => ({
+                    ...current,
+                    mail: { ...(current.mail as Record<string, unknown>), fromName: e.target.value },
+                  }))}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{t('settings.smtpServer')}</Label>
+                  <Input
+                    placeholder="smtp.example.com"
+                    value={normalizedSystemConfig.mail?.smtpServer ?? ''}
+                    onChange={(e) => setSystemConfig((current) => ({
+                      ...current,
+                      mail: { ...(current.mail as Record<string, unknown>), smtpServer: e.target.value },
+                    }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('settings.smtpPort')}</Label>
+                  <Input
+                    type="number"
+                    placeholder="587"
+                    value={normalizedSystemConfig.mail?.smtpPort ?? 587}
+                    onChange={(e) => setSystemConfig((current) => ({
+                      ...current,
+                      mail: { ...(current.mail as Record<string, unknown>), smtpPort: Number(e.target.value) || 587 },
+                    }))}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{t('settings.smtpAccount')}</Label>
+                  <Input
+                    placeholder="user@example.com"
+                    value={normalizedSystemConfig.mail?.smtpAccount ?? ''}
+                    onChange={(e) => setSystemConfig((current) => ({
+                      ...current,
+                      mail: { ...(current.mail as Record<string, unknown>), smtpAccount: e.target.value },
+                    }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('settings.smtpToken')}</Label>
+                  <Input
+                    type="password"
+                    placeholder="••••••••"
+                    value={normalizedSystemConfig.mail?.smtpToken ?? ''}
+                    onChange={(e) => setSystemConfig((current) => ({
+                      ...current,
+                      mail: { ...(current.mail as Record<string, unknown>), smtpToken: e.target.value },
+                    }))}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('settings.mailFromEmail')}</Label>
+                <Input
+                  type="email"
+                  placeholder="no-reply@yourdomain.com"
+                  value={normalizedSystemConfig.mail?.fromEmail ?? ''}
+                  onChange={(e) => setSystemConfig((current) => ({
+                    ...current,
+                    mail: { ...(current.mail as Record<string, unknown>), fromEmail: e.target.value },
+                  }))}
+                />
+              </div>
+            </>
+          )}
+
+          {/* 测试发件 */}
+          <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-4">
+            <Label>{t('settings.mailTest')}</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="test@example.com"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!testEmail || mailTestMutation.isPending}
+                onClick={() => {
+                  if (testEmail.trim()) {
+                    mailTestMutation.mutate(testEmail.trim())
+                  }
+                }}
+              >
+                {mailTestMutation.isPending ? t('settings.mailTesting') : t('settings.mailSendTest')}
+              </Button>
             </div>
           </div>
         </section>
