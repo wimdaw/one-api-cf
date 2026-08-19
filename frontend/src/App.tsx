@@ -14,6 +14,7 @@ import { ApiTest } from "./pages/ApiTest";
 import { NotFound } from "./pages/NotFound";
 import { SystemSettings } from "./pages/SystemSettings";
 import { Users } from "./pages/Users";
+import { UserGroups } from "./pages/UserGroups";
 import { MyAccount } from "./pages/MyAccount";
 import { Redemptions } from "./pages/Redemptions";
 
@@ -165,6 +166,14 @@ function App() {
               element={
                 <AdminRoute>
                   <Users />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/user-groups"
+              element={
+                <AdminRoute>
+                  <UserGroups />
                 </AdminRoute>
               }
             />

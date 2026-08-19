@@ -21,6 +21,7 @@ import {
   PanelLeftOpen,
   SlidersHorizontal,
   Zap,
+  UserCog,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useState } from "react";
@@ -50,6 +51,7 @@ const navItemDefs: NavItem[] = [
   { titleKey: "sidebar.tokens", href: "/tokens", icon: Key, group: "management" },
   { titleKey: "sidebar.pricing", href: "/pricing", icon: DollarSign, group: "management" },
   { titleKey: "sidebar.users", href: "/users", icon: Users, group: "management", adminOnly: true },
+  { titleKey: "sidebar.userGroups", href: "/user-groups", icon: UserCog, group: "management", adminOnly: true },
   { titleKey: "sidebar.redemptions", href: "/redemptions", icon: Ticket, group: "management", adminOnly: true },
   { titleKey: "sidebar.usageLogs", href: "/usage-logs", icon: FileText, group: "tools", adminOnly: true },
   { titleKey: "sidebar.apiTest", href: "/api-test", icon: TestTube2, group: "tools" },
