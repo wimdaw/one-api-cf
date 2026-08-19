@@ -116,87 +116,48 @@ export class GroupListEndpoint extends OpenAPIRoute {
     }
 }
 
-// 创建用户组 (显式注册, 便于管理)
-export class GroupCreateEndpoint extends OpenAPIRoute {
-    schema = {
-        tags: ["Admin API"],
-        summary: "Create a user group explicitly",
-        request: {
-            body: {
-                content: {
-                    "application/json": {
-                        schema: z.object({
-                            name: z.string().min(1).max(32).regex(/^[a-zA-Z0-9_-]+$/).describe("Group name"),
-                            description: z.string().max(100).optional().describe("Group description"),
-                        }),
-                    },
-                },
-            },
-        },
-        responses: {
-            ...CommonSuccessfulResponse(z.any()),
-            ...CommonErrorResponse,
-        },
-    };
+// 创建用户组 (显式注册, 便于管理) — Hono handler (避免 esbuild tree-shaking)
+export async function createGroup(c: Context<HonoCustomType>) {
+    const body = await c.req.json().catch(() => ({}));
+    const name = String(body.name || "").trim();
+    const description = String(body.description || "").trim();
 
-    async handle(c: Context<HonoCustomType>) {
-        const body = await c.req.json().catch(() => ({}));
-        const name = String(body.name || "").trim();
-        const description = String(body.description || "").trim();
-
-        if (!GROUP_NAME_RE.test(name)) {
-            return c.json({ success: false, error: "Invalid group name (alphanumeric, underscore, hyphen, max 32)" }, 400);
-        }
-        if (name === "default") {
-            return c.json({ success: false, error: "The default group already exists" }, 400);
-        }
-
-        const existing = await c.env.DB.prepare(
-            `SELECT name FROM group_config WHERE name = ?`
-        ).bind(name).first();
-        if (existing) {
-            return c.json({ success: false, error: "Group already exists" }, 409);
-        }
-
-        await c.env.DB.prepare(
-            `INSERT INTO group_config (name, description) VALUES (?, ?)`
-        ).bind(name, description).run();
-
-        return c.json({ success: true, data: { name, description } });
+    if (!GROUP_NAME_RE.test(name)) {
+        return c.json({ success: false, error: "Invalid group name (alphanumeric, underscore, hyphen, max 32)" }, 400);
     }
+    if (name === "default") {
+        return c.json({ success: false, error: "The default group already exists" }, 400);
+    }
+
+    const existing = await c.env.DB.prepare(
+        `SELECT name FROM group_config WHERE name = ?`
+    ).bind(name).first();
+    if (existing) {
+        return c.json({ success: false, error: "Group already exists" }, 409);
+    }
+
+    await c.env.DB.prepare(
+        `INSERT INTO group_config (name, description) VALUES (?, ?)`
+    ).bind(name, description).run();
+
+    return c.json({ success: true, data: { name, description } });
 }
 
-// 删除用户组 (仅删除注册记录; 用户/渠道仍可隐式引用)
-export class GroupDeleteEndpoint extends OpenAPIRoute {
-    schema = {
-        tags: ["Admin API"],
-        summary: "Delete a user group registration",
-        request: {
-            params: z.object({
-                name: z.string(),
-            }),
-        },
-        responses: {
-            ...CommonSuccessfulResponse(z.any()),
-            ...CommonErrorResponse,
-        },
-    };
-
-    async handle(c: Context<HonoCustomType>) {
-        const { name } = c.req.param();
-        if (name === "default") {
-            return c.json({ success: false, error: "Cannot delete the default group" }, 400);
-        }
-
-        const result = await c.env.DB.prepare(
-            `DELETE FROM group_config WHERE name = ?`
-        ).bind(name).run();
-
-        return c.json({
-            success: true,
-            data: { deleted: result.meta?.changes ?? 0 },
-        });
+// 删除用户组 (仅删除注册记录; 用户/渠道仍可隐式引用) — Hono handler
+export async function deleteGroup(c: Context<HonoCustomType>) {
+    const { name } = c.req.param();
+    if (name === "default") {
+        return c.json({ success: false, error: "Cannot delete the default group" }, 400);
     }
+
+    const result = await c.env.DB.prepare(
+        `DELETE FROM group_config WHERE name = ?`
+    ).bind(name).run();
+
+    return c.json({
+        success: true,
+        data: { deleted: result.meta?.changes ?? 0 },
+    });
 }
 
 // 修改用户所属组
