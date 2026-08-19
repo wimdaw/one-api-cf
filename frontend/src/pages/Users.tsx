@@ -83,7 +83,8 @@ export function Users() {
     queryKey: ["groups"],
     queryFn: async () => {
       const res = await apiClient.listGroups();
-      return res.data ?? ["default"];
+      const raw = res.data as unknown as { groups?: Array<{ name: string }> } | null;
+      return raw?.groups ?? [];
     },
   });
 
@@ -370,15 +371,15 @@ export function Users() {
           <div className="space-y-2">
             <Label>{t("users.group")}</Label>
             <div className="flex flex-wrap gap-2">
-              {(groups ?? ["default"]).map((g) => (
+              {(groups && groups.length > 0 ? groups : [{ name: "default" }]).map((g) => (
                 <Button
-                  key={g}
+                  key={g.name}
                   type="button"
-                  variant={groupValue === g ? "default" : "outline"}
+                  variant={groupValue === g.name ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setGroupValue(g)}
+                  onClick={() => setGroupValue(g.name)}
                 >
-                  {g}
+                  {g.name}
                 </Button>
               ))}
             </div>

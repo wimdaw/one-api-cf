@@ -539,7 +539,7 @@ export const apiClient = {
     ),
 
   // ---- 用户组 (移植自 one-api) ----
-  listGroups: () => request<ApiResponse<string[]>>('/api/admin/group', { method: 'GET' }),
+  listGroups: () => request<ApiResponse<{ groups: Array<{ name: string; member_count?: number; channel_count?: number }> }>>('/api/admin/group', { method: 'GET' }),
   setUserGroup: (data: { user_id: number; group: string }) =>
     request<ApiResponse<unknown>>('/api/admin/group/user', {
       method: 'POST',
@@ -551,7 +551,7 @@ export const apiClient = {
       body: JSON.stringify({ groups: data.groups }),
     }),
   getChannelGroups: (key: string) =>
-    request<ApiResponse<string[]>>(`/api/admin/group/channel/${key}`, { method: 'GET' }),
+    request<ApiResponse<{ key: string; groups: string[]; allowed: boolean }>>(`/api/admin/group/channel/${key}`, { method: 'GET' }),
 
   // 批量删除 disabled 渠道
   deleteDisabledChannels: () =>
