@@ -324,6 +324,13 @@ CREATE TABLE IF NOT EXISTS email_verification (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+-- 用户组注册表: 显式创建的组 (组也可隐式存在: users.user_group / channel groups 引用)
+CREATE TABLE IF NOT EXISTS group_config (
+    name TEXT PRIMARY KEY,
+    description TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 CREATE INDEX IF NOT EXISTS idx_email_verification_email
     ON email_verification (email, purpose);
 CREATE INDEX IF NOT EXISTS idx_email_verification_expires_at

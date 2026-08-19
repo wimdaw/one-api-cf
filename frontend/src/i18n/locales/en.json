@@ -708,7 +708,18 @@
     "allGroups": "All groups",
     "availableToAll": "Available to all",
     "userGroupUpdated": "User group updated",
-    "channelGroupUpdated": "Channel groups updated"
+    "channelGroupUpdated": "Channel groups updated",
+    "createGroup": "Create Group",
+    "createGroupTitle": "Create User Group",
+    "createGroupDescription": "Create a new user group for access control",
+    "groupName": "Group Name",
+    "groupDescription": "Description (optional)",
+    "groupDescriptionPlaceholder": "e.g. Premium tier users",
+    "explicitBadge": "custom",
+    "deleteGroup": "Delete group",
+    "deleteGroupConfirm": "Delete group \"{{name}}\"? Members in this group will be moved to default.",
+    "groupCreated": "Group created",
+    "groupDeleted": "Group deleted"
   },
   "redemptions": {
     "title": "Redemptions",

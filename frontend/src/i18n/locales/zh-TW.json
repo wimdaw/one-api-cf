@@ -688,7 +688,18 @@
     "allGroups": "所有組",
     "availableToAll": "對所有組開放",
     "userGroupUpdated": "用戶組已更新",
-    "channelGroupUpdated": "渠道組已更新"
+    "channelGroupUpdated": "渠道組已更新",
+    "createGroup": "新建組",
+    "createGroupTitle": "建立用戶組",
+    "createGroupDescription": "新建一個用戶組用於存取控制",
+    "groupName": "組名",
+    "groupDescription": "描述（選填）",
+    "groupDescriptionPlaceholder": "例如：付費會員組",
+    "explicitBadge": "自訂",
+    "deleteGroup": "刪除組",
+    "deleteGroupConfirm": "確認刪除組「{{name}}」？該組的成員將移回 default 組。",
+    "groupCreated": "組已建立",
+    "groupDeleted": "組已刪除"
   },
   "redemptions": {
     "title": "兌換碼",

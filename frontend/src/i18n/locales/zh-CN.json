@@ -690,7 +690,18 @@
     "allGroups": "所有组",
     "availableToAll": "对所有组开放",
     "userGroupUpdated": "用户组已更新",
-    "channelGroupUpdated": "渠道组已更新"
+    "channelGroupUpdated": "渠道组已更新",
+    "createGroup": "新建组",
+    "createGroupTitle": "创建用户组",
+    "createGroupDescription": "新建一个用户组用于访问控制",
+    "groupName": "组名",
+    "groupDescription": "描述（可选）",
+    "groupDescriptionPlaceholder": "例如：付费会员组",
+    "explicitBadge": "自定义",
+    "deleteGroup": "删除组",
+    "deleteGroupConfirm": "确认删除组「{{name}}」？该组的成员将移回 default 组。",
+    "groupCreated": "组已创建",
+    "groupDeleted": "组已删除"
   },
   "redemptions": {
     "title": "兑换码",

@@ -539,7 +539,14 @@ export const apiClient = {
     ),
 
   // ---- 用户组 (移植自 one-api) ----
-  listGroups: () => request<ApiResponse<{ groups: Array<{ name: string; member_count?: number; channel_count?: number }> }>>('/api/admin/group', { method: 'GET' }),
+  listGroups: () => request<ApiResponse<{ groups: Array<{ name: string; member_count?: number; channel_count?: number; explicit?: boolean; description?: string }> }>>('/api/admin/group', { method: 'GET' }),
+  createGroup: (data: { name: string; description?: string }) =>
+    request<ApiResponse<{ name: string; description?: string }>>('/api/admin/group', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteGroup: (name: string) =>
+    request<ApiResponse<{ deleted: number }>>(`/api/admin/group/${encodeURIComponent(name)}`, { method: 'DELETE' }),
   setUserGroup: (data: { user_id: number; group: string }) =>
     request<ApiResponse<unknown>>('/api/admin/group/user', {
       method: 'POST',

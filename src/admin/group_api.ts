@@ -70,23 +70,132 @@ export class GroupListEndpoint extends OpenAPIRoute {
             }
         }
 
-        const groups = (rows.results || []).map((row) => ({
+        const groups: Array<{ name: string; member_count: number; channel_count: number; explicit: boolean; description?: string }> = (rows.results || []).map((row) => ({
             name: row.user_group || "default",
             member_count: Number(row.member_count) || 0,
             channel_count: groupChannelCount.get(row.user_group || "default") || 0,
+            explicit: false,
         }));
 
         // 合并渠道中引用但无用户的组
         for (const [g, count] of groupChannelCount) {
             if (!groups.some((x) => x.name === g)) {
-                groups.push({ name: g, member_count: 0, channel_count: count });
+                groups.push({ name: g, member_count: 0, channel_count: count, explicit: false });
             }
+        }
+
+        // 合并显式创建的组 (group_config 表)
+        const configRows = await c.env.DB.prepare(
+            `SELECT name, description, created_at FROM group_config ORDER BY name ASC`
+        ).all<{ name: string; description: string; created_at: string }>();
+        for (const row of configRows.results || []) {
+            const existing = groups.find((x) => x.name === row.name);
+            if (existing) {
+                existing.explicit = true;
+                existing.description = row.description || "";
+            } else {
+                groups.push({
+                    name: row.name,
+                    member_count: 0,
+                    channel_count: 0,
+                    explicit: true,
+                    description: row.description || "",
+                });
+            }
+        }
+
+        // default 组始终展示 (即使无用户无渠道)
+        if (!groups.some((x) => x.name === "default")) {
+            groups.unshift({ name: "default", member_count: 0, channel_count: 0, explicit: false });
         }
 
         return {
             success: true,
             data: { groups },
         } as CommonResponse;
+    }
+}
+
+// 创建用户组 (显式注册, 便于管理)
+export class GroupCreateEndpoint extends OpenAPIRoute {
+    schema = {
+        tags: ["Admin API"],
+        summary: "Create a user group explicitly",
+        request: {
+            body: {
+                content: {
+                    "application/json": {
+                        schema: z.object({
+                            name: z.string().min(1).max(32).regex(/^[a-zA-Z0-9_-]+$/).describe("Group name"),
+                            description: z.string().max(100).optional().describe("Group description"),
+                        }),
+                    },
+                },
+            },
+        },
+        responses: {
+            ...CommonSuccessfulResponse(z.any()),
+            ...CommonErrorResponse,
+        },
+    };
+
+    async handle(c: Context<HonoCustomType>) {
+        const body = await c.req.json().catch(() => ({}));
+        const name = String(body.name || "").trim();
+        const description = String(body.description || "").trim();
+
+        if (!GROUP_NAME_RE.test(name)) {
+            return c.json({ success: false, error: "Invalid group name (alphanumeric, underscore, hyphen, max 32)" }, 400);
+        }
+        if (name === "default") {
+            return c.json({ success: false, error: "The default group already exists" }, 400);
+        }
+
+        const existing = await c.env.DB.prepare(
+            `SELECT name FROM group_config WHERE name = ?`
+        ).bind(name).first();
+        if (existing) {
+            return c.json({ success: false, error: "Group already exists" }, 409);
+        }
+
+        await c.env.DB.prepare(
+            `INSERT INTO group_config (name, description) VALUES (?, ?)`
+        ).bind(name, description).run();
+
+        return c.json({ success: true, data: { name, description } });
+    }
+}
+
+// 删除用户组 (仅删除注册记录; 用户/渠道仍可隐式引用)
+export class GroupDeleteEndpoint extends OpenAPIRoute {
+    schema = {
+        tags: ["Admin API"],
+        summary: "Delete a user group registration",
+        request: {
+            params: z.object({
+                name: z.string(),
+            }),
+        },
+        responses: {
+            ...CommonSuccessfulResponse(z.any()),
+            ...CommonErrorResponse,
+        },
+    };
+
+    async handle(c: Context<HonoCustomType>) {
+        const { name } = c.req.param();
+        if (name === "default") {
+            return c.json({ success: false, error: "Cannot delete the default group" }, 400);
+        }
+
+        const result = await c.env.DB.prepare(
+            `DELETE FROM group_config WHERE name = ?`
+        ).bind(name).run();
+
+        return c.json({
+            success: true,
+            data: { deleted: result.meta?.changes ?? 0 },
+        });
     }
 }
 

@@ -1,17 +1,19 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
-import { AdminUser, Channel } from "@/types";
+import { Channel } from "@/types";
 import { PageContainer } from "@/components/ui/page-container";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Users2, Link2, UserPlus, Link2Off, UserMinus, ShieldCheck } from "lucide-react";
+import { Users2, Link2, UserPlus, Link2Off, UserMinus, ShieldCheck, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 type GroupInfo = {
@@ -40,7 +42,9 @@ export function UserGroups() {
   const [addUserTo, setAddUserTo] = useState<GroupInfo | null>(null);
   const [addChannelTo, setAddChannelTo] = useState<GroupInfo | null>(null);
   const [pendingUser, setPendingUser] = useState("");
-  const [pendingChannel, setPendingChannel] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupDesc, setNewGroupDesc] = useState("");
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["groups"] });
@@ -82,6 +86,28 @@ export function UserGroups() {
     onSuccess: () => {
       invalidate();
       addToast(t("userGroups.channelGroupUpdated"), "success");
+    },
+    onError: (error: Error) => addToast(error.message, "error"),
+  });
+
+  const createGroupMutation = useMutation({
+    mutationFn: () => apiClient.createGroup({ name: newGroupName.trim(), description: newGroupDesc.trim() || undefined }),
+    onSuccess: () => {
+      invalidate();
+      setShowCreate(false);
+      setNewGroupName("");
+      setNewGroupDesc("");
+      addToast(t("userGroups.groupCreated"), "success");
+    },
+    onError: (error: Error) => addToast(error.message, "error"),
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: (name: string) => apiClient.deleteGroup(name),
+    onSuccess: () => {
+      invalidate();
+      setSelectedGroup(null);
+      addToast(t("userGroups.groupDeleted"), "success");
     },
     onError: (error: Error) => addToast(error.message, "error"),
   });
@@ -143,6 +169,12 @@ export function UserGroups() {
     <PageContainer
       title={t("userGroups.title")}
       description={t("userGroups.description")}
+      actions={
+        <Button size="sm" onClick={() => setShowCreate(true)}>
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline ml-1">{t("userGroups.createGroup")}</span>
+        </Button>
+      }
     >
       <div className="space-y-6">
         {/* 统计卡 */}
@@ -182,8 +214,28 @@ export function UserGroups() {
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-primary" />
                     <span className="font-semibold">{g.name}</span>
+                    {(g as unknown as { explicit?: boolean }).explicit && (
+                      <Badge variant="outline" className="text-[10px]">{t("userGroups.explicitBadge")}</Badge>
+                    )}
                   </div>
-                  <Badge variant={g.name === "default" ? "secondary" : "default"}>{g.name === "default" ? "default" : "group"}</Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={g.name === "default" ? "secondary" : "default"}>{g.name === "default" ? "default" : "group"}</Badge>
+                    {g.name !== "default" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-destructive"
+                        title={t("userGroups.deleteGroup")}
+                        onClick={() => {
+                          if (window.confirm(t("userGroups.deleteGroupConfirm", { name: g.name }))) {
+                            deleteGroupMutation.mutate(g.name);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
@@ -394,6 +446,45 @@ export function UserGroups() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setAddChannelTo(null)}>{t("common.close")}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 新建组弹窗 */}
+        <Dialog open={showCreate} onOpenChange={setShowCreate}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("userGroups.createGroupTitle")}</DialogTitle>
+              <DialogDescription>{t("userGroups.createGroupDescription")}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("userGroups.groupName")}</Label>
+                <Input
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="vip / internal / beta..."
+                  maxLength={32}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("userGroups.groupDescription")}</Label>
+                <Input
+                  value={newGroupDesc}
+                  onChange={(e) => setNewGroupDesc(e.target.value)}
+                  placeholder={t("userGroups.groupDescriptionPlaceholder")}
+                  maxLength={100}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreate(false)}>{t("common.cancel")}</Button>
+              <Button
+                onClick={() => createGroupMutation.mutate()}
+                disabled={!newGroupName.trim() || createGroupMutation.isPending}
+              >
+                {t("userGroups.createGroup")}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

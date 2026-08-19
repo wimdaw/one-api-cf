@@ -19,6 +19,8 @@ import {
 } from "./billing_api"
 import {
     GroupListEndpoint,
+    GroupCreateEndpoint,
+    GroupDeleteEndpoint,
     GroupSetUserEndpoint,
     GroupSetChannelEndpoint,
     GroupGetChannelEndpoint,
@@ -208,6 +210,8 @@ api.get("/api/admin/log/search", AdminLogSearchEndpoint)
 
 // 用户组路由 (移植自 one-api: group)
 api.get("/api/admin/group", GroupListEndpoint)
+api.post("/api/admin/group", GroupCreateEndpoint)
+api.delete("/api/admin/group/:name", GroupDeleteEndpoint)
 api.post("/api/admin/group/user", GroupSetUserEndpoint)
 api.post("/api/admin/group/channel/:key", GroupSetChannelEndpoint)
 api.get("/api/admin/group/channel/:key", GroupGetChannelEndpoint)
