@@ -37,6 +37,18 @@ export const isChannelGroupAllowed = (
 // 组名合法性: 字母数字下划线连字符, 最长 32
 const GROUP_NAME_RE = /^[a-zA-Z0-9_-]{1,32}$/;
 
+// 确保 group_config 表存在 (Pages 环境可能未执行顶层建表)
+async function ensureGroupConfigTable(db: D1Database) {
+    await db.prepare(`
+        CREATE TABLE IF NOT EXISTS group_config (
+            name TEXT PRIMARY KEY,
+            description TEXT DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `).run();
+}
+
 // 查询所有用户组 (含用户数统计)
 export class GroupListEndpoint extends OpenAPIRoute {
     schema = {
@@ -49,6 +61,7 @@ export class GroupListEndpoint extends OpenAPIRoute {
     };
 
     async handle(c: Context<HonoCustomType>) {
+        await ensureGroupConfigTable(c.env.DB);
         const rows = await c.env.DB.prepare(
             `SELECT user_group, COUNT(*) AS member_count FROM users GROUP BY user_group ORDER BY user_group ASC`
         ).all<{ user_group: string; member_count: number }>();
@@ -118,6 +131,7 @@ export class GroupListEndpoint extends OpenAPIRoute {
 
 // 创建用户组 (显式注册, 便于管理) — Hono handler (避免 esbuild tree-shaking)
 export async function createGroup(c: Context<HonoCustomType>) {
+    await ensureGroupConfigTable(c.env.DB);
     const body = await c.req.json().catch(() => ({}));
     const name = String(body.name || "").trim();
     const description = String(body.description || "").trim();
