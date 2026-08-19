@@ -63,6 +63,20 @@ export const fetchChannelsForToken = async (
     ).bind(...channelKeys).all<ChannelConfigRow>();
 }
 
+// 查询 token 归属用户的用户组 (默认 'default')
+export const fetchUserGroupByToken = async (
+    c: Context<HonoCustomType>,
+    tokenData: ApiTokenData
+): Promise<string> => {
+    if (!tokenData.user_id) {
+        return "default";
+    }
+    const user = await c.env.DB.prepare(
+        `SELECT user_group FROM users WHERE id = ?`
+    ).bind(tokenData.user_id).first<{ user_group: string | null }>();
+    return user?.user_group || "default";
+}
+
 export const fetchAllChannels = async (c: Context<HonoCustomType>) => {
     return await c.env.DB.prepare(
         `SELECT key, value FROM channel_config`

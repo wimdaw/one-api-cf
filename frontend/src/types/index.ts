@@ -30,6 +30,7 @@ export interface ChannelConfig {
   supported_models?: string[]
   deployment_mapper?: Record<string, string>
   model_pricing?: Record<string, PricingModel>
+  groups?: string[]
 }
 
 export interface Token {

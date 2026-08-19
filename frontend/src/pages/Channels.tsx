@@ -707,6 +707,16 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
     },
   });
 
+  // 用户组列表 (用于渠道可用组配置)
+  const { data: groupOptions } = useQuery({
+    queryKey: ["groups"],
+    queryFn: async () => {
+      const res = await apiClient.listGroups();
+      const raw = res.data as unknown as { groups?: Array<{ name: string }> } | null;
+      return raw?.groups ?? [];
+    },
+  });
+
   useEffect(() => {
     const handleClick = () => setOpenMenu(null);
     document.addEventListener("click", handleClick);
@@ -1601,6 +1611,38 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
                         buttonClassName="rounded-sm w-8 h-6 data-[state=on]:bg-amber-600 data-[state=on]:text-white"
                       />
                       <p className="text-xs text-muted-foreground">{t("channels.channelWeightHint")}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">{t("channels.channelGroups")}</Label>
+                      <div className="flex flex-wrap gap-1.5 rounded-md border border-input px-3 py-2">
+                        {(groupOptions && groupOptions.length > 0 ? groupOptions : [{ name: "default" }]).map((g) => {
+                          const active = (formData.groups && formData.groups.length > 0)
+                            ? formData.groups.includes(g.name)
+                            : g.name === "default";
+                          return (
+                            <Button
+                              key={g.name}
+                              type="button"
+                              size="sm"
+                              variant={active ? "default" : "outline"}
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                const current = formData.groups && formData.groups.length > 0
+                                  ? [...formData.groups]
+                                  : [];
+                                const next = current.includes(g.name)
+                                  ? current.filter((x) => x !== g.name)
+                                  : [...current, g.name];
+                                // 空数组 = 所有组可用 (原版语义)
+                                setFormData({ ...formData, groups: next });
+                              }}
+                            >
+                              {g.name}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{t("channels.channelGroupsHint")}</p>
                     </div>
                     <div className="">
                       <Label className="text-sm">{t("channels.channelStatus")}</Label>

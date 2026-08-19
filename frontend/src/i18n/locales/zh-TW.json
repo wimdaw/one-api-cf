@@ -171,6 +171,8 @@
     "compatiblePresets": "OpenAI 兼容服務快捷模板",
     "channelWeight": "渠道權重",
     "channelWeightHint": "相同模型權重優先，相同權重隨機分配。",
+    "channelGroups": "用戶組",
+    "channelGroupsHint": "哪些用戶組可以使用此渠道（留空 = 所有組可用）",
     "channelStatus": "渠道狀態",
     "channelStatusHint": "停用後不會參與請求選路，也不會出現在可用模型列表中。",
     "runningStatus": "運行狀態",

@@ -171,6 +171,8 @@
     "compatiblePresets": "OpenAI-Compatible Presets",
     "channelWeight": "Weight",
     "channelWeightHint": "Higher weight is preferred for the same model; equal weights are randomly distributed.",
+    "channelGroups": "User Groups",
+    "channelGroupsHint": "Which user groups can use this channel (leave empty = all groups)",
     "channelStatus": "Status",
     "channelStatusHint": "Disabled channels won't receive requests or appear in model lists.",
     "runningStatus": "Status",

@@ -1,10 +1,11 @@
 import { Context } from "hono"
-import { getApiKeyFromHeaders, fetchTokenData, fetchChannelsForToken } from "./auth"
+import { getApiKeyFromHeaders, fetchTokenData, fetchChannelsForToken, fetchUserGroupByToken } from "./auth"
 import { RouteId, getRoutePolicy } from "./route-policy"
 import { findChannelModelMapping, getJsonSetting } from "../../utils"
 import { CONSTANTS } from "../../constants"
 import { TokenUtils } from "../../admin/token_utils"
 import { normalizeChannelConfig } from "../../channel-config"
+import { isChannelGroupAllowed } from "../../admin/group_api"
 import {
     buildUsageRequestMetadata,
     hashTokenKey,
@@ -67,6 +68,20 @@ export const resolveChannel = async (
         return c.text("No available channels for this token", 401);
     }
 
+    // 用户组过滤 (移植自 one-api): 渠道 groups 非空时, 用户组必须在其中才可用
+    const userGroup = await fetchUserGroupByToken(c, tokenData);
+    const groupAllowedRows = (channelsResult.results || []).filter((row) => {
+        try {
+            const config = JSON.parse(row.value) as ChannelConfig;
+            return isChannelGroupAllowed(config, userGroup);
+        } catch {
+            return true; // 解析失败不拦截, 保持原行为
+        }
+    });
+    if (groupAllowedRows.length === 0) {
+        return c.text("No available channels for this token (user group restriction)", 403);
+    }
+
     const routePolicy = getRoutePolicy(routeId);
     const isMultipart = routePolicy.multipart === true;
     const reqContentType = c.req.header("content-type") || "";
@@ -109,7 +124,7 @@ export const resolveChannel = async (
     let availableChannels: ResolvedChannelCandidate[] = [];
     let hasDisabledMatchingChannel = false;
 
-    for (const row of channelsResult.results) {
+    for (const row of groupAllowedRows) {
         const config = (() => {
             try {
                 return normalizeChannelConfig(JSON.parse(row.value) as ChannelConfig);
@@ -152,7 +167,7 @@ export const resolveChannel = async (
 
     const requestedChannelKey = c.req.raw.headers.get('x-channel-key')?.trim();
     if (requestedChannelKey) {
-        const hasTokenAccessToChannel = channelsResult.results.some((row) => row.key === requestedChannelKey);
+        const hasTokenAccessToChannel = groupAllowedRows.some((row) => row.key === requestedChannelKey);
         if (!hasTokenAccessToChannel) {
             return c.text(`Token is not allowed to use channel: ${requestedChannelKey}`, 403);
         }
