@@ -243,7 +243,11 @@
     "ttsRate": "Rate",
     "ttsVolume": "Volume",
     "ttsPitch": "Pitch",
-    "ttsHint": "Rate format: +10% / -20%; Volume: +0% / +50%; Pitch: +0Hz / -5Hz. Request body voice/rate/volume/pitch can override."
+    "ttsHint": "Voice/rate/volume/pitch are used as channel defaults; request body can override.",
+    "ttsAddAllVoices": "Add all voices as models",
+    "ttsVoicesAdded": "Added {{count}} voice models",
+    "ttsPreview": "Preview",
+    "ttsPreviewFail": "Preview failed: {{error}}"
   },
   "tokens": {
     "title": "Tokens",

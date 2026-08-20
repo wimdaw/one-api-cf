@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "@/api/client";
 import { Channel, ChannelConfig, ChannelModelMapping } from "@/types";
+import { AZURE_TTS_VOICES, AZURE_TTS_VOICES_GROUPED } from "@/lib/azure-tts-voices";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -33,6 +34,8 @@ import {
   SlidersHorizontal,
   Sparkles,
   CircleCheck,
+  ListPlus,
+  Volume2,
 } from "lucide-react";
 import { PageContainer } from "@/components/ui/page-container";
 import { useTranslation } from "react-i18next";
@@ -253,22 +256,8 @@ const normalizeChannelFormConfig = (config: ChannelConfig): ChannelConfig => {
   };
 };
 
-// Azure TTS 预设音色列表 (用于前端音色下拉)
-const PRESET_VOICES = [
-  "zh-CN-XiaoxiaoNeural",
-  "zh-CN-YunxiNeural",
-  "zh-CN-YunyangNeural",
-  "zh-CN-XiaoyiNeural",
-  "zh-CN-YunxiaNeural",
-  "zh-CN-liaoning-XiaobeiNeural",
-  "zh-CN-shaanxi-XiaoniNeural",
-  "en-US-AvaNeural",
-  "en-US-AndrewNeural",
-  "en-US-AriaNeural",
-  "en-GB-RyanNeural",
-  "ja-JP-NanamiNeural",
-  "ko-KR-SunHiNeural",
-];
+// Azure TTS 预设音色列表 (用于前端音色下拉, 全量音色按语言分组见 azure-tts-voices.ts)
+const PRESET_VOICES = AZURE_TTS_VOICES.map((v) => v.voice);
 
 const parseChannelValue = (channel: Channel): ChannelConfig => {
   if (typeof channel.value !== "string") {
@@ -932,6 +921,67 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
 
   const handleToggleEnabled = (channel: Channel, enabled: boolean) => {
     toggleEnabledMutation.mutate({ channel, enabled });
+  };
+
+  // 把全部 Azure TTS 音色加入模型列表 (每个音色 = 一个模型)
+  const handleAddAllTtsVoicesAsModels = () => {
+    const existingIds = new Set((formData.models || []).map((m) => m.id));
+    const newModels: ChannelModelMapping[] = AZURE_TTS_VOICES.map((v) => ({
+      id: v.voice,
+      name: v.label,
+      enabled: true,
+    }));
+    const merged = [...(formData.models || []), ...newModels.filter((m) => !existingIds.has(m.id))];
+    applyModels(merged);
+    addToast(t("channels.ttsVoicesAdded", { count: newModels.length }), "success");
+  };
+
+  // 试听当前音色
+  const [previewing, setPreviewing] = useState(false);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const handlePreviewVoice = async () => {
+    const voice = (formData.voice || "").trim();
+    if (!voice) {
+      addToast(t("channels.fillRequired"), "error");
+      return;
+    }
+    setPreviewing(true);
+    try {
+      const response = await fetch("/api/admin/tts/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          voice,
+          rate: formData.rate || "+0%",
+          volume: formData.volume || "+0%",
+          pitch: formData.pitch || "+0Hz",
+        }),
+      });
+      if (!response.ok) {
+        let msg = `HTTP ${response.status}`;
+        try {
+          const data = await response.json();
+          msg = data?.error || msg;
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current.src = url;
+        await previewAudioRef.current.play();
+      } else {
+        const audio = new Audio(url);
+        previewAudioRef.current = audio;
+        await audio.play();
+      }
+    } catch (error) {
+      addToast(t("channels.ttsPreviewFail", { error: error instanceof Error ? error.message : String(error) }), "error");
+    } finally {
+      setPreviewing(false);
+    }
   };
 
   const handleFetchModels = (freeOnly = false) => {
@@ -1740,25 +1790,15 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
                                                         if (v !== "__custom__") setFormData({ ...formData, voice: v });
                                                       }}
                                                     >
-                                                      <optgroup label="中文">
-                                                        <option value="zh-CN-XiaoxiaoNeural">晓晓 (zh-CN-XiaoxiaoNeural)</option>
-                                                        <option value="zh-CN-YunxiNeural">云希 (zh-CN-YunxiNeural)</option>
-                                                        <option value="zh-CN-YunyangNeural">云扬 (zh-CN-YunyangNeural)</option>
-                                                        <option value="zh-CN-XiaoyiNeural">晓伊 (zh-CN-XiaoyiNeural)</option>
-                                                        <option value="zh-CN-YunxiaNeural">云夏 (zh-CN-YunxiaNeural)</option>
-                                                        <option value="zh-CN-liaoning-XiaobeiNeural">晓北-辽宁 (zh-CN-liaoning-XiaobeiNeural)</option>
-                                                        <option value="zh-CN-shaanxi-XiaoniNeural">晓妮-陕西 (zh-CN-shaanxi-XiaoniNeural)</option>
-                                                      </optgroup>
-                                                      <optgroup label="English">
-                                                        <option value="en-US-AvaNeural">Ava (en-US-AvaNeural)</option>
-                                                        <option value="en-US-AndrewNeural">Andrew (en-US-AndrewNeural)</option>
-                                                        <option value="en-US-AriaNeural">Aria (en-US-AriaNeural)</option>
-                                                        <option value="en-GB-RyanNeural">Ryan-UK (en-GB-RyanNeural)</option>
-                                                      </optgroup>
-                                                      <optgroup label="日本語 / 한국어">
-                                                        <option value="ja-JP-NanamiNeural">Nanami (ja-JP-NanamiNeural)</option>
-                                                        <option value="ko-KR-SunHiNeural">SunHi (ko-KR-SunHiNeural)</option>
-                                                      </optgroup>
+                                                      {AZURE_TTS_VOICES_GROUPED.map((group) => (
+                                                        <optgroup key={group.locale} label={group.label}>
+                                                          {group.voices.map((v) => (
+                                                            <option key={v.voice} value={v.voice}>
+                                                              {v.label} ({v.voice})
+                                                            </option>
+                                                          ))}
+                                                        </optgroup>
+                                                      ))}
                                                       <option value="__custom__">✍️ 自定义…</option>
                                                     </select>
                                                   </div>
@@ -1803,6 +1843,27 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
                                                   </div>
                                                 </div>
                                                 <p className="text-xs text-muted-foreground">{t("channels.ttsHint")}</p>
+                                                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                                                  <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handlePreviewVoice}
+                                                    disabled={previewing}
+                                                  >
+                                                    <Volume2 className="h-4 w-4 mr-1" />
+                                                    {previewing ? "..." : t("channels.ttsPreview")}
+                                                  </Button>
+                                                  <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleAddAllTtsVoicesAsModels}
+                                                  >
+                                                    <ListPlus className="h-4 w-4 mr-1" />
+                                                    {t("channels.ttsAddAllVoices")}
+                                                  </Button>
+                                                </div>
                                               </div>
                                           )}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

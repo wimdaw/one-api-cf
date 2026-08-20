@@ -243,7 +243,11 @@
     "ttsRate": "语速",
     "ttsVolume": "音量",
     "ttsPitch": "音调",
-    "ttsHint": "语速格式如 +10% / -20%；音量如 +0% / +50%；音调如 +0Hz / -5Hz。请求体中的 voice/rate/volume/pitch 可临时覆盖此处设置。"
+    "ttsHint": "音色/语速/音量/音调将作为该渠道的默认参数，请求体可临时覆盖",
+    "ttsAddAllVoices": "一键添加全部音色为模型",
+    "ttsVoicesAdded": "已添加 {{count}} 个音色模型",
+    "ttsPreview": "试听",
+    "ttsPreviewFail": "试听失败：{{error}}"
   },
   "tokens": {
     "title": "令牌管理",

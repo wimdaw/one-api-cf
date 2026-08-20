@@ -179,10 +179,12 @@ export default {
                 return c.json({ error: { message: "Azure TTS: input text is required", type: "invalid_request_error" } }, 400);
             }
 
-            // 参数优先级: 请求体 > 渠道配置 > 默认值
+            // 参数优先级: 请求体 voice > 模型名(形如音色) > 渠道配置 > 默认值
+            const modelName = typeof requestBody?.model === "string" ? requestBody.model.trim() : "";
+            const isVoiceLike = /^[a-z]{2}(-[A-Z]{2})?-[A-Za-z]+Neural$/.test(modelName);
             const voice = (typeof requestBody?.voice === "string" && requestBody.voice.trim())
                 ? requestBody.voice.trim()
-                : (config.voice || DEFAULT_VOICE);
+                : (isVoiceLike ? modelName : (config.voice || DEFAULT_VOICE));
             const rate = (typeof requestBody?.rate === "string" && requestBody.rate.trim())
                 ? requestBody.rate.trim()
                 : (config.rate || "+0%");

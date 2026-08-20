@@ -14,6 +14,7 @@ import {
 import {
     BillingConfigGetEndpoint, BillingConfigUpdateEndpoint
 } from "./billing_api"
+import { TtsPreviewEndpoint } from "./tts_preview_api"
 import {
     AdminTopUpEndpoint, TopUpRecordListEndpoint
 } from "./billing_api"
@@ -200,6 +201,7 @@ api.get("/api/admin/system/config", SystemConfigGetEndpoint)
 api.post("/api/admin/system/config", SystemConfigUpdateEndpoint)
 api.post("/api/admin/system/telegram/test", TelegramTestMessageEndpoint)
 api.post("/api/admin/system/mail/test", MailTestEndpoint)
+api.post("/api/admin/tts/preview", TtsPreviewEndpoint)
 
 // Analytics management routes
 api.get("/api/admin/analytics/overview", AnalyticsOverviewEndpoint)
