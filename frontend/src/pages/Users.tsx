@@ -153,9 +153,8 @@ export function Users() {
           <p className="text-sm text-muted-foreground mt-1">{t("users.description")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-1" />
-            {t("common.refresh")}
+          <Button variant="outline" size="icon" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4" />
           </Button>
           <Button onClick={() => { resetForm(); setShowCreate(true); }}>
             <Plus className="h-4 w-4 mr-1" />
