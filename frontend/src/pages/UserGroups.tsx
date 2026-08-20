@@ -135,13 +135,13 @@ export function UserGroups() {
     return users.filter((u) => (u as unknown as { user_group?: string }).user_group !== addUserTo.name);
   }, [addUserTo, users]);
 
-  // 可加入该组的渠道 (当前 groups 不含该组)
+  // 可加入该组的渠道 (当前 groups 不含该组; 空 groups = 全开放, 也可加入)
   const availableChannels = useMemo(() => {
     if (!addChannelTo || !channels) return [];
     return channels.filter((ch) => {
       const cfg = parseChannelConfig(ch);
       const gs = cfg.groups;
-      return gs && gs.length > 0 && !gs.includes(addChannelTo.name);
+      return !(gs && gs.length > 0 && gs.includes(addChannelTo.name));
     });
   }, [addChannelTo, channels]);
 

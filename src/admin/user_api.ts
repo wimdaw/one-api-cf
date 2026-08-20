@@ -28,7 +28,7 @@ export const UserListEndpoint = {
     },
     handler: async (c: Context<HonoCustomType>) => {
         const keyword = c.req.query("keyword")?.trim();
-        let sql = "SELECT id, username, email, display_name, role, status, quota, used_quota, inviter_id, aff_code, created_at FROM users";
+        let sql = "SELECT id, username, email, display_name, role, status, quota, used_quota, user_group, inviter_id, aff_code, created_at FROM users";
         const params: unknown[] = [];
         if (keyword) {
             sql += " WHERE username LIKE ? OR email LIKE ? OR display_name LIKE ?";

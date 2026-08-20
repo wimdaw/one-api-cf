@@ -137,6 +137,7 @@ export interface AdminUser {
   quota: number
   used_quota: number
   balance: number
+  user_group?: string
   inviter_id: number | null
   created_at: string
 }
