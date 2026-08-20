@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { copyToClipboard, formatCurrency } from "@/lib/utils";
+import { useBillingConfig } from "@/hooks/use-billing-config";
 import { useAuthStore } from "@/store/auth";
 import { Plus, Copy, Trash2, KeyRound, Wallet, User as UserIcon, Gift, BarChart3, Mail, BadgeCheck, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -18,6 +19,8 @@ export function MyAccount() {
   const { addToast } = useToast();
   const { currentUser } = useAuthStore();
   const queryClient = useQueryClient();
+  const { data: billingConfig } = useBillingConfig();
+  const displayDecimals = billingConfig?.displayDecimals ?? 6;
   const [newName, setNewName] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [pwd, setPwd] = useState("");
@@ -161,7 +164,7 @@ export function MyAccount() {
                 </div>
                 <div className="rounded-lg bg-muted/40 p-3">
                   <div className="text-xs text-muted-foreground">{t("account.costTotal")}</div>
-                  <div className="text-xl font-bold">{formatCurrency(dashboard.overview?.totals?.totalCost ?? 0)}</div>
+                  <div className="text-xl font-bold">{formatCurrency(dashboard.overview?.totals?.totalCost ?? 0, displayDecimals)}</div>
                 </div>
               </div>
               {dashboard.breakdown?.items && dashboard.breakdown.items.length > 0 && (
