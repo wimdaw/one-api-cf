@@ -45,6 +45,13 @@ export function formatQuota(value: number, displayDecimals = DEFAULT_BILLING_DIS
   return formatCurrency(value, displayDecimals)
 }
 
+// 格式化已知为美元的金额 (余额/额度等), 不做 raw→usd 转换。
+// 整数不显示小数 ($99), 非整数保留两位 ($99.50)
+export function formatUsd(value: number): string {
+  if (!Number.isFinite(value)) return "$0"
+  return value % 1 === 0 ? `$${value}` : `$${value.toFixed(2)}`
+}
+
 export function formatCompactNumber(value: number): string {
   const absValue = Math.abs(value)
 

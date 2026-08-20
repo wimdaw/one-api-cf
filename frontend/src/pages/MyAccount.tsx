@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { copyToClipboard, formatCurrency } from "@/lib/utils";
+import { copyToClipboard, formatCurrency, formatUsd } from "@/lib/utils";
 import { useBillingConfig } from "@/hooks/use-billing-config";
 import { useAuthStore } from "@/store/auth";
 import { Plus, Copy, Trash2, KeyRound, Wallet, User as UserIcon, Gift, BarChart3, Mail, BadgeCheck, Send } from "lucide-react";
@@ -135,7 +135,7 @@ export function MyAccount() {
           </div>
           <div>
             <div className="text-sm text-muted-foreground">{t("account.balance")}</div>
-            <div className="text-3xl font-bold">{balance < 0 ? t("common.unlimited") : formatCurrency(balance, displayDecimals)}</div>
+            <div className="text-3xl font-bold">{balance < 0 ? t("common.unlimited") : formatUsd(balance)}</div>
           </div>
           <div className="ml-auto text-right text-sm text-muted-foreground">
             <div>{t("account.username")}: {currentUser?.username}</div>
