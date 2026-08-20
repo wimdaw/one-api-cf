@@ -171,7 +171,7 @@ export function UserGroups() {
       description={t("userGroups.description")}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => refetchGroups()}>
+          <Button variant="outline" size="sm" onClick={() => refetchGroups()}>
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button size="sm" onClick={() => setShowCreate(true)}>
