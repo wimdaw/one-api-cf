@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Users2, Link2, UserPlus, Link2Off, UserMinus, ShieldCheck, Plus, Trash2 } from "lucide-react";
+import { Users2, Link2, UserPlus, Link2Off, UserMinus, ShieldCheck, Plus, Trash2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 type GroupInfo = {
@@ -52,7 +52,7 @@ export function UserGroups() {
     queryClient.invalidateQueries({ queryKey: ["channels"] });
   };
 
-  const { data: groups } = useQuery({
+  const { data: groups, refetch: refetchGroups } = useQuery({
     queryKey: ["groups"],
     queryFn: async () => {
       const res = await apiClient.listGroups();
@@ -170,10 +170,16 @@ export function UserGroups() {
       title={t("userGroups.title")}
       description={t("userGroups.description")}
       actions={
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline ml-1">{t("userGroups.createGroup")}</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetchGroups()}>
+            <RefreshCw className="h-4 w-4" />
+            <span className="hidden sm:inline ml-1">{t("common.refresh")}</span>
+          </Button>
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline ml-1">{t("userGroups.createGroup")}</span>
+          </Button>
+        </div>
       }
     >
       <div className="space-y-6">
