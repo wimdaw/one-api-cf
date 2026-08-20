@@ -135,7 +135,7 @@ export function MyAccount() {
           </div>
           <div>
             <div className="text-sm text-muted-foreground">{t("account.balance")}</div>
-            <div className="text-3xl font-bold">{balance < 0 ? t("common.unlimited") : `$${Number(Math.floor(balance * 100) / 100)}`}</div>
+            <div className="text-3xl font-bold">{balance < 0 ? t("common.unlimited") : formatCurrency(balance, displayDecimals)}</div>
           </div>
           <div className="ml-auto text-right text-sm text-muted-foreground">
             <div>{t("account.username")}: {currentUser?.username}</div>

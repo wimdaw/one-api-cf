@@ -147,7 +147,8 @@ export function UserGroups() {
 
   const toggleChannelGroup = (channel: Channel, groupName: string, remove: boolean) => {
     const cfg = parseChannelConfig(channel);
-    const current = cfg.groups && cfg.groups.length > 0 ? [...cfg.groups] : [];
+    // groups 空 = 全开放(所有组可用)。加入组时保留 default, 避免渠道从 default 组消失。
+    const current = cfg.groups && cfg.groups.length > 0 ? [...cfg.groups] : ["default"];
     const next = remove
       ? current.filter((g) => g !== groupName)
       : [...new Set([...current, groupName])];
@@ -429,21 +430,25 @@ export function UserGroups() {
                   {availableChannels.map((ch) => {
                     const cfg = parseChannelConfig(ch);
                     return (
-                      <button
+                      <div
                         key={ch.key}
-                        type="button"
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/50"
-                        onClick={() => {
-                          toggleChannelGroup(ch, addChannelTo!.name, false);
-                          setAddChannelTo(null);
-                        }}
+                        className="flex items-center justify-between gap-2 px-3 py-2"
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="text-sm font-medium truncate">{cfg.name || ch.key}</span>
+                          <Badge variant="secondary" className="text-[10px] shrink-0">{ch.key}</Badge>
                         </div>
-                        <Badge variant="secondary" className="text-[10px] shrink-0">{ch.key}</Badge>
-                      </button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7 shrink-0"
+                          title={t("userGroups.addChannel")}
+                          onClick={() => toggleChannelGroup(ch, addChannelTo!.name, false)}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     );
                   })}
                 </div>

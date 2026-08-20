@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
 import { AdminUser } from "@/types";
+import { formatCurrency } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Search, KeyRound, UserCog, Ban, CheckCircle2, Coins, Users2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useBillingConfig } from "@/hooks/use-billing-config";
 
 const ROLE_USER = 1;
 const ROLE_ADMIN = 10;
@@ -24,6 +26,8 @@ export function Users() {
   const { t } = useTranslation();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
+  const { data: billingConfig } = useBillingConfig();
+  const displayDecimals = billingConfig?.displayDecimals ?? 6;
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<AdminUser | null>(null);
@@ -218,7 +222,7 @@ export function Users() {
                       <td className="py-2 pr-4 text-muted-foreground">
                         {(u as unknown as { user_group?: string }).user_group || "default"}
                       </td>
-                      <td className="py-2 pr-4 text-right">{u.balance < 0 ? t("common.unlimited") : `$${Number(u.balance.toFixed(2))}`}</td>
+                      <td className="py-2 pr-4 text-right">{u.balance < 0 ? t("common.unlimited") : formatCurrency(u.balance, displayDecimals)}</td>
                       <td className="py-2 text-right whitespace-nowrap">
                         {u.status === STATUS_ENABLED ? (
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
