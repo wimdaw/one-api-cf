@@ -35,3 +35,4 @@ bun.lock
 *.local.jsonc
 .zcode
 devdata/
+package-lock.json
