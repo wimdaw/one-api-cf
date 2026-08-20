@@ -46,10 +46,12 @@ export function formatQuota(value: number, displayDecimals = DEFAULT_BILLING_DIS
 }
 
 // 格式化已知为美元的金额 (余额/额度等), 不做 raw→usd 转换。
-// 整数不显示小数 ($99), 非整数保留两位 ($99.50)
-export function formatUsd(value: number): string {
+// 整数不显示小数 ($99), 非整数按后台 displayDecimals 设置
+export function formatUsd(value: number, displayDecimals = DEFAULT_BILLING_DISPLAY_DECIMALS): string {
   if (!Number.isFinite(value)) return "$0"
-  return value % 1 === 0 ? `$${value}` : `$${value.toFixed(2)}`
+  if (value % 1 === 0) return `$${value}`
+  const d = Math.max(2, normalizeBillingDisplayDecimals(displayDecimals))
+  return `$${value.toFixed(d)}`
 }
 
 export function formatCompactNumber(value: number): string {

@@ -135,7 +135,7 @@ export function MyAccount() {
           </div>
           <div>
             <div className="text-sm text-muted-foreground">{t("account.balance")}</div>
-            <div className="text-3xl font-bold">{balance < 0 ? t("common.unlimited") : formatUsd(balance)}</div>
+            <div className="text-3xl font-bold">{balance < 0 ? t("common.unlimited") : formatUsd(balance, displayDecimals)}</div>
           </div>
           <div className="ml-auto text-right text-sm text-muted-foreground">
             <div>{t("account.username")}: {currentUser?.username}</div>
