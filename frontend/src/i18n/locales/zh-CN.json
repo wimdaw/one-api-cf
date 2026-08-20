@@ -658,7 +658,25 @@
     "reqSuccess": "成功请求",
     "tokensUsed": "使用 Tokens",
     "costTotal": "总成本",
-    "byModel": "按模型"
+    "byModel": "按模型",
+    "emailSettings": "邮箱设置",
+    "emailVerifiedBadge": "已验证",
+    "emailUnverified": "未验证",
+    "emailHint": "绑定邮箱后可使用邮箱验证码重置密码",
+    "verificationCode": "验证码",
+    "resendCode": "重发验证码",
+    "verifyEmail": "验证邮箱",
+    "emailBoundSuccess": "邮箱绑定成功",
+    "bindEmail": "绑定邮箱",
+    "sendCode": "发送验证码",
+    "resendIn": "重新发送",
+    "bindNow": "立即绑定",
+    "codeSent": "验证码已发送",
+    "codeSendFailed": "验证码发送失败",
+    "emailBound": "邮箱已绑定",
+    "emailBindFailed": "邮箱绑定失败",
+    "emailVerified": "邮箱已验证",
+    "emailVerifyFailed": "邮箱验证失败"
   },
   "userGroups": {
     "title": "用户组",
@@ -701,7 +719,9 @@
     "deleteGroup": "删除组",
     "deleteGroupConfirm": "确认删除组「{{name}}」？该组的成员将移回 default 组。",
     "groupCreated": "组已创建",
-    "groupDeleted": "组已删除"
+    "groupDeleted": "组已删除",
+    "addChannelTitle": "将渠道加入 {{name}}",
+    "addChannelDescription": "选择要加入该组的渠道，加入后该渠道仅该组用户可用"
   },
   "redemptions": {
     "title": "兑换码",

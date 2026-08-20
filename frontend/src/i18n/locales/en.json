@@ -719,7 +719,9 @@
     "deleteGroup": "Delete group",
     "deleteGroupConfirm": "Delete group \"{{name}}\"? Members in this group will be moved to default.",
     "groupCreated": "Group created",
-    "groupDeleted": "Group deleted"
+    "groupDeleted": "Group deleted",
+    "addChannelTitle": "Add channel to {{name}}",
+    "addChannelDescription": "Select channels to add to this group. After adding, the channel is only available to users in this group."
   },
   "redemptions": {
     "title": "Redemptions",
