@@ -1724,7 +1724,7 @@ export function Channels({ createMode = false, editRoute = false }: { createMode
                       />
                       <p className="text-xs text-muted-foreground">{t("channels.mirrorsHint")}</p>
                                           </div>
-                                          {formData.type === "azure-tts" && (
+                                          {["azure-tts", "azure-openai-audio"].includes(formData.type) && (
                                             <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-4">
                                               <div className="text-sm font-medium">{t("channels.ttsSettings")}</div>
                                               <div className="space-y-2">
