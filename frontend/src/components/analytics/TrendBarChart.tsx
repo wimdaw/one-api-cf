@@ -33,7 +33,7 @@ export function TrendBarChart({
   displayDecimals: number;
 }) {
   const peakRequests = Math.max(...points.map((point) => point.requests), 1);
-  const minColumnWidth = range === "90d" ? 28 : range === "30d" ? 34 : range === "24h" ? 42 : 56;
+  const minColumnWidth = range === "30d" ? 34 : range === "24h" ? 42 : 56;
   const chartMinWidth = Math.max(points.length * minColumnWidth, 720);
   const yTicks = Array.from({ length: 5 }, (_, index) => {
     const value = (peakRequests / 4) * (4 - index);

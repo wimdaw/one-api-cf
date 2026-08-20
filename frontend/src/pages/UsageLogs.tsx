@@ -38,7 +38,7 @@ type UsageLogPageCacheSnapshot = {
   data: UsageLogSearchData;
 };
 
-const RANGE_VALUES: AnalyticsRange[] = ["24h", "7d", "30d", "90d"];
+const RANGE_VALUES: AnalyticsRange[] = ["24h", "7d", "30d"];
 
 const PAGINATION_WINDOW_SIZE = 5;
 const USAGE_LOGS_PAGE_CACHE_KEY = "usage-logs:page:v2";
@@ -46,7 +46,6 @@ const USAGE_LOG_RANGE_DURATION_MS: Record<AnalyticsRange, number> = {
   "24h": 24 * 60 * 60 * 1000,
   "7d": 7 * 24 * 60 * 60 * 1000,
   "30d": 30 * 24 * 60 * 60 * 1000,
-  "90d": 90 * 24 * 60 * 60 * 1000,
 };
 
 const isAnalyticsRange = (value: unknown): value is AnalyticsRange => {
@@ -261,7 +260,6 @@ export function UsageLogs() {
     { value: "24h", label: t('analytics.range24h') },
     { value: "7d", label: t('analytics.range7d') },
     { value: "30d", label: t('analytics.range30d') },
-    { value: "90d", label: t('analytics.range90d') },
   ];
 
   const logsQuery = useQuery({

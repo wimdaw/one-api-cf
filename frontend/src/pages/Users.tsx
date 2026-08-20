@@ -11,7 +11,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Search, KeyRound, UserCog, Ban, CheckCircle2, Coins, Users2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, KeyRound, UserCog, Ban, CheckCircle2, Coins, Users2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const ROLE_USER = 1;
@@ -34,7 +34,7 @@ export function Users() {
   const [groupTarget, setGroupTarget] = useState<AdminUser | null>(null);
   const [groupValue, setGroupValue] = useState("default");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
       const res = await apiClient.listUsers();
@@ -152,10 +152,16 @@ export function Users() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">{t("users.description")}</p>
         </div>
-        <Button onClick={() => { resetForm(); setShowCreate(true); }}>
-          <Plus className="h-4 w-4 mr-1" />
-          {t("users.create")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-1" />
+            {t("common.refresh")}
+          </Button>
+          <Button onClick={() => { resetForm(); setShowCreate(true); }}>
+            <Plus className="h-4 w-4 mr-1" />
+            {t("users.create")}
+          </Button>
+        </div>
       </div>
 
       <Card className="border-0">
