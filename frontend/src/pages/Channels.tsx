@@ -57,6 +57,7 @@ const channelTypes = [
   { value: "azure-openai-responses", label: "Azure OpenAI Responses" },
   { value: "openai-video", label: "OpenAI Video" },
   { value: "agnes-video", label: "Agnes Video (async task)" },
+  { value: "azure-tts", label: "Azure TTS" },
 ];
 
 // 常用 OpenAI-compatible 渠道快捷模板: 选类型时自动填入默认 endpoint
