@@ -125,7 +125,12 @@ app.use('/api/admin/*', async (c, next) => {
                     await next();
                     return;
                 }
-                clearAdminSessionCookie(c);
+                // 普通用户访问管理端点: 仅拒绝 (401), 不销毁其登录会话。
+                // 销毁 cookie 会把刷新操练场/看板的普通用户强制登出 (Bug 修复)。
+                return c.text(
+                    t(c.get('lang') || 'zh-CN', 'auth.unauthorized'),
+                    401
+                );
             } else {
                 // 纯管理员会话 (ADMIN_TOKEN 登录, 无 user_id) 保持兼容
                 c.set("user", null);

@@ -22,7 +22,6 @@ export function MyAccount() {
   const [showCreate, setShowCreate] = useState(false);
   const [pwd, setPwd] = useState("");
   const [oldPwd, setOldPwd] = useState("");
-  const [displayName, setDisplayName] = useState(currentUser?.display_name || "");
 
   const { data: tokens, isLoading } = useQuery({
     queryKey: ["my-tokens"],
@@ -52,7 +51,7 @@ export function MyAccount() {
   });
 
   const updateProfile = useMutation({
-    mutationFn: () => apiClient.updateMyProfile({ display_name: displayName, password: pwd || undefined, old_password: pwd ? oldPwd : undefined }),
+    mutationFn: () => apiClient.updateMyProfile({ password: pwd || undefined, old_password: pwd ? oldPwd : undefined }),
     onSuccess: () => { setPwd(""); setOldPwd(""); addToast(t("account.updated"), "success"); },
   });
 
@@ -239,8 +238,8 @@ export function MyAccount() {
           <CardContent className="p-5 space-y-4">
             <h2 className="font-semibold flex items-center gap-2"><UserIcon className="h-4 w-4" />{t("account.profile")}</h2>
             <div className="space-y-2">
-              <Label>{t("account.displayName")}</Label>
-              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+              <Label>{t("users.username")}</Label>
+              <Input value={currentUser?.username || profileData?.username || ""} readOnly disabled />
             </div>
             <div className="space-y-2">
               <Label>{t("account.oldPassword")}</Label>

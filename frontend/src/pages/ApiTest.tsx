@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/use-toast'
 import { apiClient } from '@/api/client'
-import { Channel, Token } from '@/types'
+import { Channel, MyToken, Token } from '@/types'
+import { useAuthStore } from '@/store/auth'
 import { AutoCompleteInput, type AutoCompleteOption } from '@/components/ui/autocomplete'
 import { Bot, CheckCircle, ChevronDown, ChevronRight, Clock, Code2, Copy, Edit3, RefreshCw, Save, Send, Square, User, X } from 'lucide-react'
 import { PageContainer } from '@/components/ui/page-container'
@@ -339,6 +340,8 @@ export function ApiTest() {
   const [statusCode, setStatusCode] = useState<number | null>(null)
   const [tokens, setTokens] = useState<Token[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
+  const currentUser = useAuthStore((state) => state.currentUser)
+  const isAdminUser = (currentUser?.role ?? 0) >= 10
 
   useEffect(() => {
     return () => {
@@ -349,12 +352,24 @@ export function ApiTest() {
   useEffect(() => {
     const loadOptions = async () => {
       try {
+        // 管理员读全量渠道/令牌; 普通用户读自助端点(自己的令牌+可见渠道)
+        // 不能统一用 /api/admin/*: 普通用户会 401 且旧版后端会销毁其会话 cookie
+        const isAdmin = (useAuthStore.getState().currentUser?.role ?? 0) >= 10
+        if (isAdmin) {
+          const [tokenResponse, channelResponse] = await Promise.all([
+            apiClient.getTokens(),
+            apiClient.getChannels(),
+          ])
+          setTokens((tokenResponse.data as Token[]) || [])
+          setChannels((channelResponse.data as Channel[]) || [])
+          return
+        }
         const [tokenResponse, channelResponse] = await Promise.all([
-          apiClient.getTokens(),
-          apiClient.getChannels(),
+          apiClient.myTokens(),
+          apiClient.myChannels(),
         ])
-
-        setTokens((tokenResponse.data as Token[]) || [])
+        const myTokenData = (tokenResponse.data as { tokens?: MyToken[] } | undefined)
+        setTokens((myTokenData?.tokens || []) as unknown as Token[])
         setChannels((channelResponse.data as Channel[]) || [])
       } catch (error) {
         console.error('Failed to load playground options:', error)

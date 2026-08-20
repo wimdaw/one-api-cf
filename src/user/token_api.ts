@@ -26,6 +26,8 @@ export const MyTokenListEndpoint = {
             const data = JSON.parse(row.value || "{}") as ApiTokenData;
             return {
                 key: row.key,
+                // 透传完整 value (含 channel_keys/expires_at), 供操练场按渠道过滤
+                value: row.value,
                 name: data.name,
                 // 保持 raw 返回, 前端 formatQuotaInputValue 统一换算为美元显示
                 total_quota: data.total_quota,

@@ -143,6 +143,7 @@ export interface AdminUser {
 
 export interface MyToken {
   key: string
+  value?: string
   name: string
   total_quota: number
   usage: number
